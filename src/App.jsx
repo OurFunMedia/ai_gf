@@ -67,6 +67,7 @@ export default function App() {
   }
 
   const handleClearChat = async () => {
+    if (!window.confirm('確定清除所有對話記錄？')) return
     try { await del('messages', 'chat') } catch {}
     window.location.reload()
   }

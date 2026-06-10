@@ -104,6 +104,11 @@ export default function Chat({ character, onChangeCharacter }) {
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
+  const deleteMessage = (id) => {
+    if (!window.confirm('確定刪除此訊息？')) return
+    setMessages(prev => prev.filter(m => m.id !== id))
+  }
+
   if (!ready) return null
 
   /* system prompt augmentation for pro mode */
@@ -330,9 +335,17 @@ export default function Chat({ character, onChangeCharacter }) {
     <div className="chat-container">
       <div className="messages">
         {messages.map((msg) => (
-          <div key={msg.id} className={`message ${msg.role}`}>
+          <div key={msg.id} className={`message ${msg.role}`} style={{ position: 'relative' }}>
             <div className="message-avatar">{msg.role === 'assistant' ? '♡' : '☺'}</div>
-            <div className="message-bubble">
+            <div className="message-bubble" style={{ position: 'relative' }}>
+              <button onClick={() => deleteMessage(msg.id)}
+                style={{
+                  position: 'absolute', top: 2, right: 4,
+                  background: 'none', border: 'none', color: 'var(--text-muted)',
+                  fontSize: '0.7rem', cursor: 'pointer', opacity: 0.3,
+                  lineHeight: 1, padding: '2px 4px', zIndex: 1,
+                }}
+                title="刪除訊息">✕</button>
               {msg.type === 'image' ? (
                 <>
                   <p style={{ marginBottom: 8 }}>{msg.content}</p>
