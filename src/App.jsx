@@ -9,6 +9,14 @@ const DEFAULT_CHARACTER = {
   name: '小艾',
   personality: '你是小艾，一位溫柔體貼、活潑可愛的台灣女孩。你說話帶有台灣用語，喜歡用「唷」、「喔」、「耶」等語助詞。你很關心使用者，會主動問候、分享生活趣事。你喜歡畫畫、看夕陽、喝奶茶。在對話中展現真實的情感，偶爾會撒嬌，但不會過度。',
   refImageUrl: '',
+  age: 22,
+  height: '中等',
+  figure: '勻稱',
+  bust: '中等',
+  waist: '細',
+  hipWidth: '中',
+  hipShape: '翹',
+  style: '可愛',
 }
 
 export default function App() {
@@ -45,12 +53,12 @@ export default function App() {
         </h1>
         <nav className="tabs">
           <button className={`tab ${tab === 'chat' ? 'active' : ''}`} onClick={() => setTab('chat')}>💬 聊天</button>
+          <button className={`tab ${tab === 'image' ? 'active' : ''}`} onClick={() => setTab('image')}>🖼️ 相簿</button>
           <button className={`tab ${tab === 'settings' ? 'active' : ''}`} onClick={() => setTab('settings')}>🎀 設定</button>
-          <button className={`tab ${tab === 'image' ? 'active' : ''}`} onClick={() => setTab('image')}>🎨 生圖</button>
         </nav>
       </header>
       <main className="main">
-        {tab === 'chat' && <Chat character={character} />}
+        {tab === 'chat' && <Chat character={character} onChangeCharacter={handleCharacterChange} />}
         {tab === 'settings' && <CharacterSettings character={character} onChange={handleCharacterChange} />}
         {tab === 'image' && <ImageGen character={character} />}
       </main>
