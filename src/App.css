@@ -116,10 +116,29 @@
 .album-viewer-close:hover { color: var(--pink-light); }
 
 @media (max-width: 600px) {
+  html { font-size: 15px; }
   .header { flex-direction: column; gap: 8px; padding: 10px 12px; }
+  .logo { font-size: 1.1rem; }
   .tabs { width: 100%; }
-  .tab { flex: 1; text-align: center; font-size: 0.8rem; padding: 8px 8px; }
-  .main { padding: 12px; }
-  .message { max-width: 95%; }
-  .album-grid { grid-template-columns: repeat(2, 1fr); }
+  .tab { flex: 1; text-align: center; font-size: 0.85rem; padding: 10px 6px; }
+  .main { padding: 10px; }
+  .message { max-width: 95%; font-size: 0.95rem; }
+  .message-bubble { font-size: 0.95rem; padding: 10px 12px; }
+  .album-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .chat-input { font-size: 1rem; padding: 14px 16px; }
+  .chat-send { font-size: 1rem; padding: 14px 20px; min-height: 48px; }
+  .chat-input-area { gap: 6px; }
+  .scene-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .scene-btn { font-size: 0.8rem; padding: 12px 6px; min-height: 52px; }
+  .scene-btn .scene-icon { font-size: 1.2rem; }
+  .settings { max-width: 100%; }
+  .body-opt { font-size: 0.9rem; padding: 10px 16px; min-height: 42px; min-width: 44px; }
+  .setting-group label { font-size: 0.9rem; }
+  .setting-group input, .setting-group textarea { font-size: 0.95rem; padding: 12px 14px; }
+  .gen-btn { font-size: 1rem; padding: 14px 20px; min-height: 48px; }
+  .album-info { padding: 8px; }
+  .album-date { font-size: 0.75rem; }
+  .album-prompt { font-size: 0.8rem; }
+  .ref-preview { width: 100px; height: 100px; }
+  .chat-container .tab { font-size: 1rem; padding: 8px 10px; min-width: 44px; min-height: 44px; }
 }
