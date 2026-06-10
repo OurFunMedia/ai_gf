@@ -18,10 +18,12 @@ export default function App() {
 
   /* load persisted character settings on mount */
   useEffect(() => {
-    get('settings', 'character').then((record) => {
-      if (record) setCharacter(record.value)
-      setReady(true)
-    })
+    get('settings', 'character')
+      .then((record) => {
+        if (record) setCharacter(record.value)
+      })
+      .catch(() => { /* first visit or corrupted db — use defaults */ })
+      .finally(() => setReady(true))
   }, [])
 
   /* persist character settings on change */

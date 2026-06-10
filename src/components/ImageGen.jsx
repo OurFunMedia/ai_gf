@@ -26,9 +26,11 @@ export default function ImageGen({ character }) {
 
   /* load image history on mount */
   useEffect(() => {
-    getAll('images').then((records) => {
-      setHistory(records.sort((a, b) => b.timestamp - a.timestamp))
-    })
+    getAll('images')
+      .then((records) => {
+        setHistory(records.sort((a, b) => b.timestamp - a.timestamp))
+      })
+      .catch(() => { /* no history yet */ })
   }, [])
 
   const generate = async () => {

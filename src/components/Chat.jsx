@@ -17,14 +17,18 @@ export default function Chat({ character }) {
 
   /* load persisted messages on mount */
   useEffect(() => {
-    get('messages', 'chat').then((record) => {
-      if (record?.messages?.length) {
-        setMessages(record.messages)
-      } else {
+    get('messages', 'chat')
+      .then((record) => {
+        if (record?.messages?.length) {
+          setMessages(record.messages)
+        } else {
+          setMessages([{ role: 'assistant', content: WELCOME(character.name) }])
+        }
+      })
+      .catch(() => {
         setMessages([{ role: 'assistant', content: WELCOME(character.name) }])
-      }
-      setReady(true)
-    })
+      })
+      .finally(() => setReady(true))
   }, [])
 
   /* persist messages to IndexedDB whenever they change */
