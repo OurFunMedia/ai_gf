@@ -3,15 +3,18 @@ import { getAll, del } from '../lib/db.js'
 
 export default function ImageGen({ character }) {
   const [photos, setPhotos] = useState([])
+  const [loading, setLoading] = useState(true)
   const [viewUrl, setViewUrl] = useState(null)
 
   /* load photos on mount */
   const loadPhotos = () => {
+    setLoading(true)
     getAll('images')
       .then((records) => {
         setPhotos(records.sort((a, b) => b.timestamp - a.timestamp))
       })
       .catch(() => { /* no history yet */ })
+      .finally(() => setLoading(false))
   }
 
   useEffect(() => { loadPhotos() }, [])
@@ -46,7 +49,15 @@ export default function ImageGen({ character }) {
         )}
       </p>
 
-      {photos.length === 0 && (
+      {loading && (
+        <div style={{
+          textAlign: 'center', padding: '48px 16px', color: 'var(--text-muted)',
+        }}>
+          <p>載入中...</p>
+        </div>
+      )}
+
+      {!loading && photos.length === 0 && (
         <div style={{
           textAlign: 'center', padding: '48px 16px', color: 'var(--text-muted)',
           border: '2px dashed var(--border)', borderRadius: 'var(--radius-sm)',
@@ -59,7 +70,7 @@ export default function ImageGen({ character }) {
         </div>
       )}
 
-      {photos.length > 0 && (
+      {!loading && photos.length > 0 && (
         <div className="album-grid">
           {photos.map(photo => (
             <div key={photo.id} className="album-card">

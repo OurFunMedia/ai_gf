@@ -7,18 +7,15 @@ const AGNES_CHAT_MODEL = import.meta.env.VITE_AGNES_CHAT_MODEL
 const AGNES_IMAGE_MODEL = import.meta.env.VITE_AGNES_IMAGE_MODEL
 
 const WELCOME = (name) => `嗨～我是${name}！今天過得怎麼樣呀？😊`
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
 
 const SCENES = [
-  { id: 'sunset-beach', icon: '🌅', label: '沙灘夕陽', prompt: '在夕陽沙灘上回頭微笑，金色陽光灑在海面與臉龐，溫暖的逆光輪廓，男友視角半身構圖' },
-  { id: 'cafe', icon: '☕', label: '咖啡廳約會', prompt: '在溫馨咖啡廳靠窗座位，手拿一杯拿鐵看向窗外，窗邊自然光灑落，舒適文青氛圍，男友視角半身特寫' },
-  { id: 'bookstore', icon: '📚', label: '書店', prompt: '在獨立書店裡站在書架前翻書，專注閱讀的側臉，暖黃色燈光，安靜文藝氛圍，男友視角半身構圖' },
-  { id: 'night-city', icon: '🌃', label: '城市夜景', prompt: '在高樓夜景前轉身回眸，身後是繁華城市霓虹燈光，微風吹動髮絲，藍調夜晚氛圍，男友視角半身構圖' },
-  { id: 'park', icon: '🌿', label: '公園散步', prompt: '在翠綠公園小徑上散步回頭微笑，陽光穿過樹葉灑下斑駁光影，自然清新風格，男友視角全身構圖' },
-  { id: 'bed-morning', icon: '🛏️', label: '早晨賴床', prompt: '在溫暖的被窩裡剛睡醒，揉揉眼睛露出慵懶微笑，窗外晨光灑入，柔和自然光，男友視角特寫' },
-  { id: 'cooking', icon: '🍳', label: '廚房做早餐', prompt: '在廚房裡穿著圍裙做早餐，回頭對鏡頭微笑，平底鍋冒著熱氣，暖黃色廚房燈光，溫馨居家氛圍，男友視角半身構圖' },
-  { id: 'rainy', icon: '🌂', label: '雨天窗邊', prompt: '在窗邊看雨，手中握著一杯熱茶，窗外朦朧雨景，憂鬱而浪漫的氛圍，柔和室內燈光，男友視角半身構圖' },
-  { id: 'shopping', icon: '🛍️', label: '逛街試穿', prompt: '在服飾店裡試穿衣服，對著鏡子整理衣領，店內暖色燈光，時尚都會風格，男友視角全身構圖' },
-  { id: 'bedroom', icon: '🛋️', label: '睡房', prompt: '在溫馨的睡房裡坐在床邊整理頭髮，窗外午後陽光柔和灑入，舒適放鬆的居家氛圍，男友視角半身構圖' },
+  { id: 'beach', icon: '🏖️', label: '沙灘', prompt: '單人照片，在沙灘上赤腳漫步回頭微笑，海風吹動髮絲與裙擺，藍天白雲與海浪，自然清爽風格，男友視角半身構圖' },
+  { id: 'cafe', icon: '☕', label: '咖啡廳約會', prompt: '單人照片，在溫馨咖啡廳靠窗座位，手拿一杯拿鐵看向窗外，窗邊自然光灑落，舒適文青氛圍，男友視角半身特寫' },
+  { id: 'bookstore', icon: '📚', label: '書店', prompt: '單人照片，在獨立書店裡站在書架前翻書，專注閱讀的側臉，暖黃色燈光，安靜文藝氛圍，男友視角半身構圖' },
+  { id: 'park', icon: '🌿', label: '公園散步', prompt: '單人照片，在翠綠公園小徑上散步回頭微笑，陽光穿過樹葉灑下斑駁光影，自然清新風格，男友視角全身構圖' },
+  { id: 'shopping', icon: '🛍️', label: '逛街試穿', prompt: '單人照片，在服飾店裡試穿衣服，對著鏡子整理衣領，店內暖色燈光，時尚都會風格，男友視角全身構圖' },
+  { id: 'bedroom', icon: '🛋️', label: '睡房', prompt: '單人照片，在溫馨的睡房裡坐在床邊整理頭髮，窗外午後陽光柔和灑入，舒適放鬆的居家氛圍，男友視角半身構圖' },
 ]
 
 /* build natural language body description from character settings */
@@ -64,7 +61,18 @@ export default function Chat({ character, onChangeCharacter }) {
   const [selectedScene, setSelectedScene] = useState(null)
   const [customPrompt, setCustomPrompt] = useState('')
   const [genLoading, setGenLoading] = useState(false)
+  const [genStatus, setGenStatus] = useState('')
   const [proMode, setProMode] = useState(false)
+  const [styleMode, setStyleMode] = useState(
+    character.style === '性感' ? 'sexy' : character.style === '可愛' ? 'cute' : ''
+  ) /* 'sexy' or 'cute' or '' */
+
+  const abortRef = useRef(null)
+  const persistTimer = useRef(null)
+  const cancelGen = () => {
+    abortRef.current?.abort()
+    setGenLoading(false); setGenStatus(''); setError('')
+  }
 
   /* load persisted messages on mount */
   useEffect(() => {
@@ -73,21 +81,25 @@ export default function Chat({ character, onChangeCharacter }) {
         if (record?.messages?.length) {
           setMessages(record.messages)
         } else {
-          setMessages([{ role: 'assistant', content: WELCOME(character.name) }])
+          setMessages([{ id: uid(), role: 'assistant', content: WELCOME(character.name) }])
         }
       })
       .catch(() => {
-        setMessages([{ role: 'assistant', content: WELCOME(character.name) }])
+        setMessages([{ id: uid(), role: 'assistant', content: WELCOME(character.name) }])
       })
       .finally(() => setReady(true))
   }, [])
 
-  /* persist messages to IndexedDB whenever they change */
+  /* debounced persist messages to IndexedDB */
   useEffect(() => {
     if (!ready) return
-    put('messages', { id: 'chat', messages }).catch((err) => {
-      console.error('Failed to save messages:', err)
-    })
+    clearTimeout(persistTimer.current)
+    persistTimer.current = setTimeout(() => {
+      put('messages', { id: 'chat', messages }).catch((err) => {
+        console.error('Failed to save messages:', err)
+      })
+    }, 1500)
+    return () => clearTimeout(persistTimer.current)
   }, [messages, ready])
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
@@ -101,22 +113,22 @@ export default function Chat({ character, onChangeCharacter }) {
     const bodyDesc = buildBodyDesc(character)
     const proExtra = `
 
-你現在是「專業攝影大師」模式。你的角色身體特徵：${bodyDesc}。
+ 你現在是「專業攝影大師」模式。你的角色身體特徵：${bodyDesc}。
 
-當使用者在對話中想要拍照時，依照以下流程引導他們：
+ 當使用者在對話中想要拍照時，依照以下流程引導他們：
 
-1. 先讓使用者描述他們想拍什麼畫面
-2. 逐一詢問缺少的元素（一次問 1-2 個，不要全部一次問完）：
-   - 主體：誰在畫面中？在做什麼？
-   - 場景/環境：在哪裡？室內還是戶外？
-   - 風格：寫實、夢幻、電影感、動漫風格？
-   - 光源：自然光、夕陽、霓虹、燭光？
-   - 構圖：特寫、半身、全身、第一人稱男友視角？
-   - 品質要求：高畫質、精細細節？
-3. 收集到所有必要元素後，輸出完整的英文提示如下：
-[PROMPT]詳細的英文提示，必須遵循結構：[Subject] + [Body Description: ${bodyDesc}] + [Scene/Environment] + [Style] + [Lighting] + [Composition] + [Quality]，強調男友視覺第一人稱拍攝視角[/PROMPT]
+ 1. 先讓使用者描述他們想拍什麼畫面
+ 2. 逐一詢問缺少的元素（一次問 1-2 個，不要全部一次問完）：
+    - 主體：誰在畫面中？在做什麼？
+    - 場景/環境：在哪裡？室內還是戶外？
+    - 風格：寫實、夢幻、電影感、可愛或性感？
+    - 光源：自然光、夕陽、霓虹、燭光？
+    - 構圖：特寫、半身、全身、第一人稱男友視角？
+    - 品質要求：高畫質、精細細節？
+ 3. 收集到所有必要元素後，輸出完整的中文照片提示如下：
+ [PROMPT]詳細的中文照片提示，描述主體動作、場景氛圍、風格、光源、構圖、品質，加入隨機的光影和細節描述[/PROMPT]
 
-注意：對話使用中文，只有 [PROMPT] 區塊用英文。一次問 1-2 個問題就好，不要一次全問，讓對話自然流暢。`
+ 注意：整個對話使用中文。一次問 1-2 個問題就好，不要一次全問，讓對話自然流暢。`
     return base ? `${base}\n${proExtra}` : proExtra
   }
 
@@ -125,9 +137,10 @@ export default function Chat({ character, onChangeCharacter }) {
     const userMsg = input.trim()
     setInput('')
     setError('')
-    const newMessages = [...messages, { role: 'user', content: userMsg }]
+    const newMessages = [...messages, { id: uid(), role: 'user', content: userMsg }]
     setMessages(newMessages)
     setLoading(true)
+    abortRef.current = new AbortController()
     try {
       const systemContent = getSystemContent()
       const payload = {
@@ -142,6 +155,7 @@ export default function Chat({ character, onChangeCharacter }) {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${AGNES_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: abortRef.current.signal,
       })
       if (!res.ok) throw new Error(`API error: ${res.status}`)
       const data = await res.json()
@@ -154,7 +168,7 @@ export default function Chat({ character, onChangeCharacter }) {
           const expandedPrompt = promptMatch[1].trim()
           const cleanReply = reply.replace(/\[PROMPT\][\s\S]*?\[\/PROMPT\]/, '').trim()
           setMessages(prev => [...prev, {
-            role: 'assistant',
+            id: uid(), role: 'assistant',
             content: cleanReply || '📸 幫你生成大師級男友視覺照片中...',
           }])
           setProMode(false) /* exit pro mode */
@@ -164,45 +178,93 @@ export default function Chat({ character, onChangeCharacter }) {
         }
       }
 
-      setMessages(prev => [...prev, { role: 'assistant', content: reply }])
-    } catch (err) { setError(err.message) }
-    finally { setLoading(false) }
+      setMessages(prev => [...prev, { id: uid(), role: 'assistant', content: reply }])
+    } catch (err) { if (err.name !== 'AbortError') setError(err.message) }
+    finally { setLoading(false); abortRef.current = null }
   }
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
 
+  /* shared image API call */
+  const callImageAPI = async (finalPrompt, refUrl, signal) => {
+    const payload = { model: AGNES_IMAGE_MODEL, prompt: finalPrompt, size: '1024x1536' }
+    if (refUrl) {
+      payload.extra_body = { image: [refUrl], response_format: 'b64_json' }
+    }
+    const res = await fetch(`${AGNES_BASE}/images/generations`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${AGNES_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal,
+    })
+    if (!res.ok) throw new Error(`API error: ${res.status}`)
+    const data = await res.json()
+    const b64 = data.data?.[0]?.b64_json
+    if (!b64) throw new Error('No image returned')
+    return `data:image/png;base64,${b64}`
+  }
+
+  /* AI expand prompt for more detail and randomness */
+  const expandPrompt = async (base, signal) => {
+    const styleHint = styleMode === 'sexy'
+      ? '時尚性感、成熟嫵媚、自信迷人'
+      : styleMode === 'cute' ? '可愛活潑、清新自然、甜美療癒'
+      : '自然風格、真實生活感'
+    const sysMsg = `你是專業攝影師，請將以下照片提示擴寫成更豐富、更多細節、每次輸出都不同的版本。\
+加入光線描述、色彩氛圍、情緒表情、隨機環境細節。維持中文敘述。\
+風格方向：${styleHint}。只輸出擴寫後的提示，不要任何前言或說明。`
+    const res = await fetch(`${AGNES_BASE}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${AGNES_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: AGNES_CHAT_MODEL,
+        messages: [
+          { role: 'system', content: sysMsg },
+          { role: 'user', content: base },
+        ],
+        temperature: 0.95, max_tokens: 512,
+      }),
+      signal,
+    })
+    if (!res.ok) return base
+    const data = await res.json()
+    const expanded = data.choices?.[0]?.message?.content?.trim()
+    return expanded || base
+  }
+
   const generateImage = async () => {
     const promptText = customPrompt.trim() || (selectedScene ? SCENES.find(s => s.id === selectedScene)?.prompt : '')
     if (!promptText) { setError('請選擇一個情境或輸入描述'); return }
-    setGenLoading(true); setError('')
-    const bodyDesc = buildBodyDesc(character)
-    const refClause = character.refImageUrl ? '角色外貌保持不變（臉部、髮型、體型完全與參考圖一致）' : ''
-    const fullPrompt = `${refClause}${refClause ? '，' : ''}${bodyDesc}，${promptText}。高畫質、精細細節、寫實風格`.replace(/^，/, '')
+
+    abortRef.current = new AbortController()
+    const signal = abortRef.current.signal
+    setGenLoading(true); setGenStatus('✏️'); setError('')
 
     try {
-      const payload = { model: AGNES_IMAGE_MODEL, prompt: fullPrompt, size: '1024x1536' }
-      if (character.refImageUrl) {
-        payload.extra_body = { image: [character.refImageUrl], response_format: 'b64_json' }
-      }
-      const res = await fetch(`${AGNES_BASE}/images/generations`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${AGNES_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) throw new Error(`API error: ${res.status}`)
-      const data = await res.json()
-      const b64 = data.data?.[0]?.b64_json
-      if (!b64) throw new Error('No image returned')
-      const dataUrl = `data:image/png;base64,${b64}`
+      const bodyDesc = buildBodyDesc(character)
+      const refClause = character.refImageUrl ? '角色外貌保持不變（臉部、髮型、體型完全與參考圖一致）' : ''
+      const styleHint = styleMode === 'sexy' ? '時尚性感風格' : styleMode === 'cute' ? '可愛活潑風格' : ''
+      const basePrompt = styleHint
+        ? `${refClause}${refClause ? '，' : ''}${bodyDesc}，${styleHint}，${promptText}`.replace(/^，/, '')
+        : `${refClause}${refClause ? '，' : ''}${bodyDesc}，${promptText}`.replace(/^，/, '')
+
+      /* step 1: AI expand with randomness */
+      setGenStatus('✏️')
+      const expandedPrompt = await expandPrompt(basePrompt, signal)
+      if (signal.aborted) return
+
+      /* step 2: send expanded prompt to image API */
+      setGenStatus('🎨')
+      const finalPrompt = `${expandedPrompt}。高畫質、精細細節、寫實風格`
+      const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, signal)
+      if (signal.aborted) return
 
       const label = selectedScene ? SCENES.find(s => s.id === selectedScene)?.label : '自訂'
       const imageMsg = {
-        role: 'assistant',
-        type: 'image',
-        imageUrl: dataUrl,
-        content: `📸 生成了「${label}」的圖片`,
+        id: uid(), role: 'assistant', type: 'image',
+        imageUrl: dataUrl, content: `📸 生成了「${label}」的圖片`,
       }
       setMessages(prev => [...prev, imageMsg])
 
@@ -215,38 +277,29 @@ export default function Chat({ character, onChangeCharacter }) {
       if (character.refImageUrl?.startsWith('data:')) {
         onChangeCharacter?.({...character, refImageUrl: ''})
       }
-    } catch (err) { setError(err.message) }
-    finally { setGenLoading(false) }
+    } catch (err) {
+      if (err.name === 'AbortError') return
+      setError(err.message)
+    }
+    finally { setGenLoading(false); setGenStatus(''); abortRef.current = null }
   }
 
   /* auto-generate image from AI-crafted prompt in pro mode */
   const generateImageFromPrompt = async (expandedPrompt, label = '大師級作品') => {
-    setGenLoading(true)
+    abortRef.current = new AbortController()
+    const signal = abortRef.current.signal
+    setGenLoading(true); setGenStatus('🎨')
     const bodyDesc = buildBodyDesc(character)
     const refClause = character.refImageUrl ? '角色外貌保持不變（臉部、髮型、體型完全與參考圖一致）' : ''
-    const fullPrompt = `${refClause}${refClause ? '，' : ''}${bodyDesc}，${expandedPrompt}。高畫質、精細細節、寫實風格`.replace(/^，/, '')
+    const finalPrompt = `${refClause}${refClause ? '，' : ''}${bodyDesc}，${expandedPrompt}。高畫質、精細細節、寫實風格`.replace(/^，/, '')
 
     try {
-      const payload = { model: AGNES_IMAGE_MODEL, prompt: fullPrompt, size: '1024x1536' }
-      if (character.refImageUrl) {
-        payload.extra_body = { image: [character.refImageUrl], response_format: 'b64_json' }
-      }
-      const res = await fetch(`${AGNES_BASE}/images/generations`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${AGNES_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) throw new Error(`API error: ${res.status}`)
-      const data = await res.json()
-      const b64 = data.data?.[0]?.b64_json
-      if (!b64) throw new Error('No image returned')
-      const dataUrl = `data:image/png;base64,${b64}`
+      const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, signal)
+      if (signal.aborted) return
 
       const imageMsg = {
-        role: 'assistant',
-        type: 'image',
-        imageUrl: dataUrl,
-        content: `📸 大師級男友視覺作品 — ${label}`,
+        id: uid(), role: 'assistant', type: 'image',
+        imageUrl: dataUrl, content: `📸 大師級男友視覺作品 — ${label}`,
       }
       setMessages(prev => [...prev, imageMsg])
 
@@ -259,11 +312,15 @@ export default function Chat({ character, onChangeCharacter }) {
       if (character.refImageUrl?.startsWith('data:')) {
         onChangeCharacter?.({...character, refImageUrl: ''})
       }
-    } catch (err) { setError(err.message) }
-    finally { setGenLoading(false) }
+    } catch (err) {
+      if (err.name === 'AbortError') return
+      setError(err.message)
+    }
+    finally { setGenLoading(false); setGenStatus(''); abortRef.current = null }
   }
 
   const toggleImgMode = () => {
+    if (genLoading) cancelGen()
     setImgMode(!imgMode)
     setError('')
     if (!imgMode) { setSelectedScene(null); setCustomPrompt('') }
@@ -272,8 +329,8 @@ export default function Chat({ character, onChangeCharacter }) {
   return (
     <div className="chat-container">
       <div className="messages">
-        {messages.map((msg, i) => (
-          <div key={i} className={`message ${msg.role}`}>
+        {messages.map((msg) => (
+          <div key={msg.id} className={`message ${msg.role}`}>
             <div className="message-avatar">{msg.role === 'assistant' ? '♡' : '☺'}</div>
             <div className="message-bubble">
               {msg.type === 'image' ? (
@@ -361,13 +418,37 @@ export default function Chat({ character, onChangeCharacter }) {
                   </button>
                 ))}
               </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <button className={`scene-btn ${styleMode === 'cute' ? 'selected' : ''}`}
+                  onClick={() => setStyleMode(v => v === 'cute' ? '' : 'cute')}
+                  style={{ flex: 1, padding: '10px 8px', fontSize: '0.85rem' }}>
+                  🌸 可愛活潑
+                </button>
+                <button className={`scene-btn ${styleMode === 'sexy' ? 'selected' : ''}`}
+                  onClick={() => setStyleMode(v => v === 'sexy' ? '' : 'sexy')}
+                  style={{ flex: 1, padding: '10px 8px', fontSize: '0.85rem' }}>
+                  🔥 時尚性感
+                </button>
+              </div>
               <textarea className="chat-input" rows={6} value={customPrompt}
                 onChange={e => { setCustomPrompt(e.target.value); setSelectedScene(null); setError('') }}
                 placeholder="或自訂情境描述，例如：在雪山頂上看日出..."
                 style={{ width: '100%', marginBottom: 8 }} disabled={genLoading} />
-              <button className="chat-send" style={{ width: '100%' }} onClick={generateImage} disabled={genLoading || (!selectedScene && !customPrompt.trim())}>
-                {genLoading ? '🎨 繪圖中...' : `🎨 生成 ${character.name} 的圖片`}
-              </button>
+              {genLoading ? (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="chat-send" style={{ flex: 1 }} disabled>
+                    {genStatus || '🎨'} 處理中...
+                  </button>
+                  <button className="chat-send" onClick={cancelGen}
+                    style={{ flexShrink: 0, background: 'transparent', border: '1px solid #ff6b6b', color: '#ff6b6b' }}>
+                    ✕ 取消
+                  </button>
+                </div>
+              ) : (
+                <button className="chat-send" style={{ width: '100%' }} onClick={generateImage} disabled={!selectedScene && !customPrompt.trim()}>
+                  🎨 生成 {character.name} 的圖片
+                </button>
+              )}
             </>
           )}
         </div>

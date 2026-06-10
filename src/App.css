@@ -52,7 +52,7 @@
 .image-gen { max-width: 900px; margin: 0 auto; }
 .image-gen h2 { font-size: 1.25rem; margin-bottom: 16px; color: var(--pink-light); }
 .image-gen p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px; }
-.scene-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.scene-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
 .scene-btn { padding: 14px 10px; border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--border); color: var(--text); text-align: center; font-size: 0.85rem; transition: all 0.2s; }
 .scene-btn:hover { border-color: var(--pink-light); background: var(--bg-input); }
 .scene-btn.selected { border-color: var(--pink); background: rgba(232, 67, 147, 0.15); }
@@ -60,7 +60,7 @@
 
 /* Body params */
 .body-row { margin-bottom: 16px; }
-.body-age-input { width: 80px !important; padding: 8px 12px !important; font-size: 0.9rem !important; }
+input.body-age-input { width: 80px; padding: 8px 12px; font-size: 0.9rem; }
 .body-options { display: flex; flex-wrap: wrap; gap: 8px; }
 .body-opt {
   padding: 6px 14px; border-radius: var(--radius-sm); background: var(--bg-input);

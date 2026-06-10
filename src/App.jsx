@@ -1,9 +1,31 @@
-import { useState, useEffect } from 'react'
-import { get, put } from './lib/db.js'
+import { useState, useEffect, Component } from 'react'
+import { get, put, del } from './lib/db.js'
 import Chat from './components/Chat.jsx'
 import CharacterSettings from './components/CharacterSettings.jsx'
 import ImageGen from './components/ImageGen.jsx'
 import './App.css'
+
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null } }
+  static getDerivedStateFromError(error) { return { error } }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="app" style={{ padding: 40, textAlign: 'center' }}>
+          <h2 style={{ color: '#ff6b6b', marginBottom: 16 }}>⚠️ 發生錯誤</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 16, fontSize: '0.85rem' }}>
+            {this.state.error.message}
+          </p>
+          <button className="gen-btn" style={{ maxWidth: 200, margin: '0 auto' }}
+            onClick={() => { this.setState({ error: null }); window.location.reload() }}>
+            重新載入
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const DEFAULT_CHARACTER = {
   name: '小艾',
@@ -37,31 +59,46 @@ export default function App() {
   /* persist character settings on change */
   const handleCharacterChange = (next) => {
     setCharacter(next)
+    /* skip persisting temporary data-URL reference images */
+    if (next.refImageUrl?.startsWith('data:')) return
     put('settings', { id: 'character', value: next }).catch((err) => {
       console.error('Failed to save character settings:', err)
     })
   }
 
+  const handleClearChat = async () => {
+    try { await del('messages', 'chat') } catch {}
+    window.location.reload()
+  }
+
   if (!ready) return null
 
   return (
-    <div className="app">
-      <header className="header">
-        <h1 className="logo">
-          <span className="logo-icon">♡</span>
-          {' '}{character.name} <span className="logo-sub">ai gf</span>
-        </h1>
-        <nav className="tabs">
-          <button className={`tab ${tab === 'chat' ? 'active' : ''}`} onClick={() => setTab('chat')}>💬 聊天</button>
-          <button className={`tab ${tab === 'image' ? 'active' : ''}`} onClick={() => setTab('image')}>🖼️ 相簿</button>
-          <button className={`tab ${tab === 'settings' ? 'active' : ''}`} onClick={() => setTab('settings')}>🎀 設定</button>
-        </nav>
-      </header>
-      <main className="main">
-        {tab === 'chat' && <Chat character={character} onChangeCharacter={handleCharacterChange} />}
-        {tab === 'settings' && <CharacterSettings character={character} onChange={handleCharacterChange} />}
-        {tab === 'image' && <ImageGen character={character} />}
-      </main>
-    </div>
+    <ErrorBoundary>
+      <div className="app">
+        <header className="header">
+          <h1 className="logo">
+            <span className="logo-icon">♡</span>
+            {' '}{character.name} <span className="logo-sub">ai gf</span>
+          </h1>
+          <nav className="tabs">
+            <button className={`tab ${tab === 'chat' ? 'active' : ''}`} onClick={() => setTab('chat')}>💬 聊天</button>
+            <button className={`tab ${tab === 'image' ? 'active' : ''}`} onClick={() => setTab('image')}>🖼️ 相簿</button>
+            <button className={`tab ${tab === 'settings' ? 'active' : ''}`} onClick={() => setTab('settings')}>🎀 設定</button>
+            {tab === 'chat' && (
+              <button className="tab" onClick={handleClearChat}
+                style={{ marginLeft: 'auto', color: '#ff6b6b', fontSize: '0.8rem' }}>
+                🗑️ 清除
+              </button>
+            )}
+          </nav>
+        </header>
+        <main className="main">
+          {tab === 'chat' && <Chat character={character} onChangeCharacter={handleCharacterChange} />}
+          {tab === 'settings' && <CharacterSettings character={character} onChange={handleCharacterChange} />}
+          {tab === 'image' && <ImageGen character={character} />}
+        </main>
+      </div>
+    </ErrorBoundary>
   )
 }

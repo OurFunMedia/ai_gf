@@ -20,7 +20,8 @@ export default function CharacterSettings({ character, onChange }) {
       name: localName,
       personality: localPersonality,
       refImageUrl: localRefUrl,
-      age, height, figure, bust, waist, hipWidth, hipShape, style,
+      age: Math.min(60, Math.max(18, age)),
+      height, figure, bust, waist, hipWidth, hipShape, style,
     })
   }
 
