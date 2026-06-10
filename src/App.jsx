@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { get, put } from './lib/db.js'
 import Chat from './components/Chat.jsx'
 import CharacterSettings from './components/CharacterSettings.jsx'
 import ImageGen from './components/ImageGen.jsx'
@@ -13,6 +14,23 @@ const DEFAULT_CHARACTER = {
 export default function App() {
   const [tab, setTab] = useState('chat')
   const [character, setCharacter] = useState(DEFAULT_CHARACTER)
+  const [ready, setReady] = useState(false)
+
+  /* load persisted character settings on mount */
+  useEffect(() => {
+    get('settings', 'character').then((record) => {
+      if (record) setCharacter(record.value)
+      setReady(true)
+    })
+  }, [])
+
+  /* persist character settings on change */
+  const handleCharacterChange = (next) => {
+    setCharacter(next)
+    put('settings', { key: 'character', value: next })
+  }
+
+  if (!ready) return null
 
   return (
     <div className="app">
@@ -29,7 +47,7 @@ export default function App() {
       </header>
       <main className="main">
         {tab === 'chat' && <Chat character={character} />}
-        {tab === 'settings' && <CharacterSettings character={character} onChange={setCharacter} />}
+        {tab === 'settings' && <CharacterSettings character={character} onChange={handleCharacterChange} />}
         {tab === 'image' && <ImageGen character={character} />}
       </main>
     </div>

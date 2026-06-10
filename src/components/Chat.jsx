@@ -1,19 +1,41 @@
 import { useState, useRef, useEffect } from 'react'
+import { get, put } from '../lib/db.js'
 
 const AGNES_API_KEY = import.meta.env.VITE_AGNES_API_KEY
 const AGNES_BASE = import.meta.env.VITE_AGNES_BASE_URL
 const AGNES_MODEL = import.meta.env.VITE_AGNES_CHAT_MODEL
 
+const WELCOME = (name) => `嗨～我是${name}！今天過得怎麼樣呀？😊`
+
 export default function Chat({ character }) {
-  const [messages, setMessages] = useState([
-    { role: 'assistant', content: `嗨～我是${character.name}！今天過得怎麼樣呀？😊` }
-  ])
+  const [messages, setMessages] = useState([])
+  const [ready, setReady] = useState(false)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const messagesEndRef = useRef(null)
 
+  /* load persisted messages on mount */
+  useEffect(() => {
+    get('messages', 'chat').then((record) => {
+      if (record?.messages?.length) {
+        setMessages(record.messages)
+      } else {
+        setMessages([{ role: 'assistant', content: WELCOME(character.name) }])
+      }
+      setReady(true)
+    })
+  }, [])
+
+  /* persist messages to IndexedDB whenever they change */
+  useEffect(() => {
+    if (!ready) return
+    put('messages', { id: 'chat', messages })
+  }, [messages, ready])
+
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+  if (!ready) return null
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { get, put, getAll } from '../lib/db.js'
 
 const AGNES_API_KEY = import.meta.env.VITE_AGNES_API_KEY
 const AGNES_BASE = import.meta.env.VITE_AGNES_BASE_URL
@@ -21,6 +22,14 @@ export default function ImageGen({ character }) {
   const [imageUrl, setImageUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [history, setHistory] = useState([])
+
+  /* load image history on mount */
+  useEffect(() => {
+    getAll('images').then((records) => {
+      setHistory(records.sort((a, b) => b.timestamp - a.timestamp))
+    })
+  }, [])
 
   const generate = async () => {
     const promptText = customPrompt.trim() || (selectedScene ? SCENES.find(s => s.id === selectedScene)?.prompt : '')
@@ -31,7 +40,7 @@ export default function ImageGen({ character }) {
     const fullPrompt = `角色外貌保持不變（臉部、髮型、體型完全與參考圖一致），${promptText}。高畫質、精細細節、寫實風格`
 
     try {
-      const payload = { model: AGNES_MODEL, prompt: fullPrompt, size: '1024x768' }
+      const payload = { model: AGNES_MODEL, prompt: fullPrompt, size: '1024x1536' }
       if (character.refImageUrl) {
         payload.extra_body = { image: [character.refImageUrl], response_format: 'url' }
       }
@@ -45,6 +54,9 @@ export default function ImageGen({ character }) {
       const url = data.data?.[0]?.url
       if (url) setImageUrl(url)
       else throw new Error('No image returned')
+      const record = { id: `img_${Date.now()}`, imageUrl: url, scene: selectedScene, prompt: promptText, timestamp: Date.now() }
+      await put('images', record)
+      setHistory(prev => [record, ...prev])
     } catch (err) { setError(err.message) }
     finally { setLoading(false) }
   }
@@ -76,6 +88,23 @@ export default function ImageGen({ character }) {
         <div className="gen-output">
           <img src={imageUrl} alt={`${character.name} in scene`} />
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 8 }}>右鍵 → 另存圖片即可下載</p>
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div className="image-history">
+          <h3 style={{ marginTop: 32, marginBottom: 12, fontSize: '1rem', color: 'var(--pink-light)' }}>📂 生成記錄</h3>
+          <div className="scene-grid">
+            {history.map((rec) => (
+              <div key={rec.id} className="history-item" style={{ cursor: 'pointer' }}
+                onClick={() => setImageUrl(rec.imageUrl)}>
+                <img src={rec.imageUrl} alt="" style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, textAlign: 'center' }}>
+                  {new Date(rec.timestamp).toLocaleDateString('zh-TW')}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
