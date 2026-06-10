@@ -29,7 +29,7 @@ export default function App() {
   /* persist character settings on change */
   const handleCharacterChange = (next) => {
     setCharacter(next)
-    put('settings', { key: 'character', value: next }).catch((err) => {
+    put('settings', { id: 'character', value: next }).catch((err) => {
       console.error('Failed to save character settings:', err)
     })
   }
