@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 
-const API_BASE = '/api'
+const AGNES_API_KEY = import.meta.env.VITE_AGNES_API_KEY
+const AGNES_BASE = import.meta.env.VITE_AGNES_BASE_URL
+const AGNES_MODEL = import.meta.env.VITE_AGNES_CHAT_MODEL
 
 export default function Chat({ character }) {
   const [messages, setMessages] = useState([
@@ -22,13 +24,18 @@ export default function Chat({ character }) {
     setMessages(newMessages)
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/chat`, {
+      const payload = {
+        model: AGNES_MODEL,
+        messages: [
+          ...(character.personality ? [{ role: 'system', content: character.personality }] : []),
+          ...newMessages.map(m => ({ role: m.role, content: m.content })),
+        ],
+        temperature: 0.8, max_tokens: 1024,
+      }
+      const res = await fetch(`${AGNES_BASE}/chat/completions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: newMessages.map(m => ({ role: m.role, content: m.content })),
-          systemPrompt: character.personality,
-        }),
+        headers: { 'Authorization': `Bearer ${AGNES_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error(`API error: ${res.status}`)
       const data = await res.json()

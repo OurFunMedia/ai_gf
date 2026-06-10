@@ -1,6 +1,8 @@
 import { useState } from 'react'
 
-const API_BASE = '/api'
+const AGNES_API_KEY = import.meta.env.VITE_AGNES_API_KEY
+const AGNES_BASE = import.meta.env.VITE_AGNES_BASE_URL
+const AGNES_MODEL = import.meta.env.VITE_AGNES_IMAGE_MODEL
 
 const SCENES = [
   { id: 'sunset-beach', icon: '🌅', label: '沙灘夕陽', prompt: '在沙灘上看夕陽，金色陽光灑在海面上，微風吹拂著頭髮，溫暖的色調' },
@@ -29,10 +31,14 @@ export default function ImageGen({ character }) {
     const fullPrompt = `角色外貌保持不變（臉部、髮型、體型完全與參考圖一致），${promptText}。高畫質、精細細節、寫實風格`
 
     try {
-      const res = await fetch(`${API_BASE}/image`, {
+      const payload = { model: AGNES_MODEL, prompt: fullPrompt, size: '1024x768' }
+      if (character.refImageUrl) {
+        payload.extra_body = { image: [character.refImageUrl], response_format: 'url' }
+      }
+      const res = await fetch(`${AGNES_BASE}/images/generations`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: fullPrompt, refImageUrl: character.refImageUrl }),
+        headers: { 'Authorization': `Bearer ${AGNES_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error(`API error: ${res.status}`)
       const data = await res.json()
