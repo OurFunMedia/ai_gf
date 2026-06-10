@@ -64,3 +64,14 @@ export async function put(storeName, data) {
     request.onerror = () => reject(request.error)
   })
 }
+
+export async function del(storeName, key) {
+  const db = await openDb()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite')
+    const store = tx.objectStore(storeName)
+    const request = store.delete(key)
+    request.onsuccess = () => resolve()
+    request.onerror = () => reject(request.error)
+  })
+}
