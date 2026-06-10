@@ -57,7 +57,9 @@ export default function ImageGen({ character }) {
       if (url) setImageUrl(url)
       else throw new Error('No image returned')
       const record = { id: `img_${Date.now()}`, imageUrl: url, scene: selectedScene, prompt: promptText, timestamp: Date.now() }
-      await put('images', record)
+      await put('images', record).catch((err) => {
+        console.error('Failed to save image record:', err)
+      })
       setHistory(prev => [record, ...prev])
     } catch (err) { setError(err.message) }
     finally { setLoading(false) }

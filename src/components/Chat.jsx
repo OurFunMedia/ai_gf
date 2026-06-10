@@ -34,7 +34,9 @@ export default function Chat({ character }) {
   /* persist messages to IndexedDB whenever they change */
   useEffect(() => {
     if (!ready) return
-    put('messages', { id: 'chat', messages })
+    put('messages', { id: 'chat', messages }).catch((err) => {
+      console.error('Failed to save messages:', err)
+    })
   }, [messages, ready])
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
