@@ -66,6 +66,11 @@ export default function Chat({ character, onChangeCharacter }) {
   const [genProgress, setGenProgress] = useState(0)
   const [proMode, setProMode] = useState(false)
 
+  /* accessories for multi-image composition */
+  const [accessories, setAccessories] = useState([])
+  const [wearDesc, setWearDesc] = useState('')
+  const fileInputRef = useRef(null)
+
   const abortRef = useRef(null)
   const persistTimer = useRef(null)
   const cancelGen = () => {
@@ -106,6 +111,27 @@ export default function Chat({ character, onChangeCharacter }) {
   const deleteMessage = (id) => {
     if (!window.confirm('確定刪除此訊息？')) return
     setMessages(prev => prev.filter(m => m.id !== id))
+  }
+
+  const handleAccessoryUpload = (e) => {
+    const files = Array.from(e.target.files || [])
+    files.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        setAccessories(prev => [...prev, {
+          id: uid(),
+          dataUrl: ev.target.result,
+          name: file.name,
+        }])
+      }
+      reader.readAsDataURL(file)
+    })
+    e.target.value = ''
+  }
+
+  const removeAccessory = (id) => {
+    setAccessories(prev => prev.filter(a => a.id !== id))
+    if (accessories.length <= 1) setWearDesc('')
   }
 
   if (!ready) return null
@@ -221,11 +247,15 @@ export default function Chat({ character, onChangeCharacter }) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
 
-  /* shared image API call */
-  const callImageAPI = async (finalPrompt, refUrl, signal) => {
-    const payload = { model: AGNES_IMAGE_MODEL, prompt: finalPrompt, size: '1024x1536' }
-    if (refUrl) {
-      payload.extra_body = { image: [refUrl], response_format: 'b64_json' }
+  /* shared image API call — supports single-image (2.1-flash) and multi-image (2.0-flash) */
+  const callImageAPI = async (finalPrompt, refUrl, accessoryUrls, signal) => {
+    const hasMulti = accessoryUrls?.length > 0
+    const model = hasMulti ? 'agnes-image-2.0-flash' : AGNES_IMAGE_MODEL
+    const payload = { model, prompt: finalPrompt, size: '1024x1536' }
+    const images = [refUrl, ...(accessoryUrls || [])].filter(Boolean)
+    if (images.length > 0) {
+      if (hasMulti) payload.tags = ['img2img']
+      payload.extra_body = { image: images, response_format: 'b64_json' }
     }
     const res = await fetch(`${AGNES_BASE}/images/generations`, {
       method: 'POST',
@@ -251,8 +281,12 @@ export default function Chat({ character, onChangeCharacter }) {
 
     const styleHint = '自然風格、真實生活感'
 
-    const clothingRule = hasRef
-      ? '1. 🧥 服裝：保持服裝不變（如果有參考圖），除非使用者明確要求換衣服。'
+    /* if user uploaded accessories, force AI to keep them in the scene */
+    const wearItems = accessories.length > 0
+      ? `（使用者指定的穿戴物品：${wearDesc || accessories.map(a => a.name.replace(/\.[^.]+$/, '')).join('、')}）務必保持這些物品在角色身上，不要移除或改變外觀`
+      : ''
+    const clothingRule = hasRef || accessories.length > 0
+      ? `1. 🧥 服裝：保持服裝不變，${wearItems}除非使用者明確要求換衣服。`
       : '1. 🧥 服裝：根據場景場合選擇合適的服裝。例如洋裝、T恤牛仔褲、襯衫短裙、連身褲、針織衫、運動服等。'
 
     const sysMsg = `你是專業攝影師，每次都要輸出截然不同的照片提示。\
@@ -299,18 +333,29 @@ ${clothingRule}
       const bodyDesc = buildBodyDesc(character)
       const hasRef = !!character.refImageUrl
       const refClause = hasRef ? '角色外貌保持不變（臉部、髮型、體型、服裝完全與參考圖一致）' : ''
-      const basePrompt = `${refClause}${refClause ? '，' : ''}${bodyDesc}，${promptText}`.replace(/^，/, '')
+
+      /* build wear description from uploaded accessories */
+      let wearClause = ''
+      if (accessories.length > 0) {
+        const names = accessories.map(a => a.name.replace(/\.[^.]+$/, '')).join('、')
+        wearClause = wearDesc
+          ? `，穿著/配戴：${wearDesc}`
+          : `，穿著/配戴：${names}`
+      }
+
+      const basePrompt = `${refClause}${refClause ? '，' : ''}${bodyDesc}${wearClause}，${promptText}`.replace(/^，/, '')
 
       /* step 1: AI expand with randomness */
       setGenStatus('✏️'); setGenProgress(20)
-      const expandedPrompt = await expandPrompt(basePrompt, signal, hasRef)
+      const expandedPrompt = await expandPrompt(basePrompt, signal, hasRef || accessories.length > 0)
       if (signal.aborted) return
       setGenProgress(45)
 
       /* step 2: send expanded prompt to image API */
       setGenStatus('🎨'); setGenProgress(50)
       const finalPrompt = `${expandedPrompt}。高畫質、精細細節、寫實風格`
-      const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, signal)
+      const accessoryUrls = accessories.map(a => a.dataUrl)
+      const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, accessoryUrls, signal)
       setGenProgress(95)
       if (signal.aborted) return
 
@@ -329,7 +374,7 @@ ${clothingRule}
       const record = { id: `img_${Date.now()}`, imageUrl: dataUrl, scene: selectedScene, prompt: promptText, timestamp: Date.now() }
       await put('images', record)
 
-      setImgMode(false); setSelectedScene(null); setCustomPrompt('')
+      setImgMode(false); setSelectedScene(null); setCustomPrompt(''); setAccessories([]); setWearDesc('')
       /* reset only data-URL reference (set via 修改這張圖), preserve external URLs */
       if (character.refImageUrl?.startsWith('data:')) {
         onChangeCharacter?.({...character, refImageUrl: ''})
@@ -348,11 +393,21 @@ ${clothingRule}
     setGenLoading(true); setGenStatus('🎨'); setGenProgress(10)
     const bodyDesc = buildBodyDesc(character)
     const refClause = character.refImageUrl ? '角色外貌保持不變（臉部、髮型、體型、服裝完全與參考圖一致）' : ''
-    const finalPrompt = `${refClause}${refClause ? '，' : ''}${bodyDesc}，${expandedPrompt}。高畫質、精細細節、寫實風格`.replace(/^，/, '')
+
+    let wearClause = ''
+    if (accessories.length > 0) {
+      const names = accessories.map(a => a.name.replace(/\.[^.]+$/, '')).join('、')
+      wearClause = wearDesc
+        ? `，穿著/配戴：${wearDesc}`
+        : `，穿著/配戴：${names}`
+    }
+
+    const finalPrompt = `${refClause}${refClause ? '，' : ''}${bodyDesc}${wearClause}，${expandedPrompt}。高畫質、精細細節、寫實風格`.replace(/^，/, '')
 
     try {
       setGenProgress(30)
-      const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, signal)
+      const accessoryUrls = accessories.map(a => a.dataUrl)
+      const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, accessoryUrls, signal)
       if (signal.aborted) return
       setGenProgress(95)
 
@@ -370,7 +425,7 @@ ${clothingRule}
       const record = { id: `img_${Date.now()}`, imageUrl: dataUrl, scene: 'pro', prompt: expandedPrompt, timestamp: Date.now() }
       await put('images', record)
 
-      setImgMode(false); setProMode(false)
+      setImgMode(false); setProMode(false); setAccessories([]); setWearDesc('')
       /* reset only data-URL reference (set via 修改這張圖), preserve external URLs */
       if (character.refImageUrl?.startsWith('data:')) {
         onChangeCharacter?.({...character, refImageUrl: ''})
@@ -386,7 +441,7 @@ ${clothingRule}
     if (genLoading) cancelGen()
     setImgMode(!imgMode)
     setError('')
-    if (!imgMode) { setSelectedScene(null); setCustomPrompt('') }
+    if (!imgMode) { setSelectedScene(null); setCustomPrompt(''); setAccessories([]); setWearDesc('') }
   }
 
   return (
@@ -476,6 +531,65 @@ ${clothingRule}
               style={{ flex: 1, padding: '8px 4px', fontSize: '0.85rem' }}>
               🌟 專業大師級
             </button>
+          </div>
+
+          {/* accessories upload (shown in both modes) */}
+          <div style={{
+            marginBottom: 12, padding: '10px 12px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'rgba(232,67,147,0.05)', border: '1px solid rgba(232,67,147,0.15)',
+          }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+              📎 上傳穿戴物品（單次使用）
+            </p>
+            {accessories.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                {accessories.map(acc => (
+                  <div key={acc.id} style={{
+                    position: 'relative', width: 56, height: 56,
+                    borderRadius: 'var(--radius-sm)', overflow: 'hidden',
+                    border: '1px solid var(--border)',
+                  }}>
+                    <img src={acc.dataUrl} alt={acc.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button onClick={() => removeAccessory(acc.id)}
+                      style={{
+                        position: 'absolute', top: 1, right: 1,
+                        width: 18, height: 18, borderRadius: '50%',
+                        background: 'rgba(0,0,0,0.6)', color: '#fff',
+                        border: 'none', cursor: 'pointer',
+                        fontSize: '0.6rem', lineHeight: '18px', padding: 0,
+                      }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input type="file" accept="image/*" multiple
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleAccessoryUpload} />
+            <button onClick={() => fileInputRef.current?.click()}
+              style={{
+                padding: '6px 14px', fontSize: '0.8rem',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px dashed var(--border)',
+                background: 'transparent', color: 'var(--text-muted)',
+                cursor: 'pointer',
+              }}>
+              + 選擇圖片
+            </button>
+            {accessories.length > 0 && (
+              <input type="text" value={wearDesc}
+                onChange={e => setWearDesc(e.target.value)}
+                placeholder="描述穿戴方式，例如：頭上戴紅色貝雷帽、脖子上掛愛心項鍊"
+                style={{
+                  width: '100%', marginTop: 8, padding: '8px 12px',
+                  fontSize: '0.8rem', borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-input)', color: 'var(--text)',
+                  outline: 'none', boxSizing: 'border-box',
+                }} />
+            )}
           </div>
 
           {proMode ? (
