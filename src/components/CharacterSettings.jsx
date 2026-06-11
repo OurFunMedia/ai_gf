@@ -22,6 +22,7 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
       refImageUrl: localRefUrl,
       age: Math.min(60, Math.max(18, age)),
       height, figure, bust, waist, hipWidth, hipShape, style,
+      showPrompt: character.showPrompt,
     })
   }
 
@@ -120,6 +121,20 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
 
       <SelectRow label="🎭 風格" value={style} onChange={setStyle}
         options={['清純', '性感', '可愛', '優雅', '鄰家']} />
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '32px 0 16px' }} />
+      <h3 style={{ margin: '0 0 12px', fontSize: '1rem', color: 'var(--pink-light)' }}>⚙️ 其他設定</h3>
+      <div className="setting-group">
+        <div className="toggle-wrap" onClick={() => onChange({ ...character, showPrompt: !character.showPrompt })}>
+          <span>顯示生成提示詞</span>
+          <div className={`toggle-track${character.showPrompt ? ' on' : ''}`}>
+            <div className="toggle-thumb" />
+          </div>
+        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '6px 0 0' }}>
+          生成圖片後自動在圖片下方顯示使用的提示詞
+        </p>
+      </div>
 
       <button className="gen-btn" style={{ marginTop: 12 }} onClick={save}>儲存設定</button>
 

@@ -39,6 +39,7 @@ const DEFAULT_CHARACTER = {
   hipWidth: '中',
   hipShape: '翹',
   style: '可愛',
+  showPrompt: true,
 }
 
 export default function App() {
@@ -89,9 +90,15 @@ export default function App() {
           </nav>
         </header>
         <main className="main">
-          {tab === 'chat' && <Chat character={character} onChangeCharacter={handleCharacterChange} />}
-          {tab === 'settings' && <CharacterSettings character={character} onChange={handleCharacterChange} onClearChat={handleClearChat} />}
-          {tab === 'image' && <ImageGen character={character} />}
+          <div style={{ display: tab === 'chat' ? 'flex' : 'none', flex: 1, minHeight: 0, flexDirection: 'column' }}>
+            <Chat character={character} onChangeCharacter={handleCharacterChange} />
+          </div>
+          <div style={{ display: tab === 'settings' ? 'block' : 'none', flex: 1, minHeight: 0 }}>
+            <CharacterSettings character={character} onChange={handleCharacterChange} onClearChat={handleClearChat} />
+          </div>
+          <div style={{ display: tab === 'image' ? 'block' : 'none', flex: 1, minHeight: 0 }}>
+            <ImageGen character={character} />
+          </div>
         </main>
       </div>
     </ErrorBoundary>

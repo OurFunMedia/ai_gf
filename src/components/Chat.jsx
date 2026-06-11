@@ -63,16 +63,14 @@ export default function Chat({ character, onChangeCharacter }) {
   const [customPrompt, setCustomPrompt] = useState('')
   const [genLoading, setGenLoading] = useState(false)
   const [genStatus, setGenStatus] = useState('')
+  const [genProgress, setGenProgress] = useState(0)
   const [proMode, setProMode] = useState(false)
-  const [styleMode, setStyleMode] = useState(
-    character.style === '性感' ? 'sexy' : character.style === '可愛' ? 'cute' : ''
-  ) /* 'sexy' or 'cute' or '' */
 
   const abortRef = useRef(null)
   const persistTimer = useRef(null)
   const cancelGen = () => {
     abortRef.current?.abort()
-    setGenLoading(false); setGenStatus(''); setError('')
+    setGenLoading(false); setGenStatus(''); setGenProgress(0); setError('')
   }
 
   /* load persisted messages on mount */
@@ -112,30 +110,37 @@ export default function Chat({ character, onChangeCharacter }) {
 
   if (!ready) return null
 
-  /* system prompt augmentation for pro mode */
+  /* build full system prompt with name consistency rule */
   const getSystemContent = () => {
+    const selfRule = `\n\n當你自我稱呼時，一定要用你的角色名稱「${character.name}」自稱，不要用「我」。例如說「${character.name}今天好開心～」而不是「我今天好開心～」。`
     let base = character.personality || ''
-    if (!proMode) return base || undefined
+    if (!proMode) return base ? `${base}${selfRule}` : undefined
     const bodyDesc = buildBodyDesc(character)
     const proExtra = `
 
- 你現在是「專業攝影大師」模式。你的角色身體特徵：${bodyDesc}。
+ 你現在是使用者的「專屬拍攝助理」！你是專業級攝影指導，為使用者規劃並拍攝 ${character.name} 的照片。
 
- 當使用者在對話中想要拍照時，依照以下流程引導他們：
+ 🔑 核心原則：**完全忠於使用者的拍攝要求**。使用者說怎麼拍就怎麼拍，你的建議只是選項，最終以使用者指定的為主。
 
- 1. 先讓使用者描述他們想拍什麼畫面
- 2. 逐一詢問缺少的元素（一次問 1-2 個，不要全部一次問完）：
-    - 主體：誰在畫面中？在做什麼？
-    - 場景/環境：在哪裡？室內還是戶外？
-    - 風格：寫實、夢幻、電影感、可愛或性感？
-    - 光源：自然光、夕陽、霓虹、燭光？
-    - 構圖：特寫、半身、全身、第一人稱男友視角？
-    - 品質要求：高畫質、精細細節？
- 3. 收集到所有必要元素後，輸出完整的中文照片提示如下：
- [PROMPT]詳細的中文照片提示，描述主體動作、場景氛圍、風格、光源、構圖、品質，加入隨機的光影和細節描述[/PROMPT]
+ 你的任務是引導使用者說出想要的畫面，並提供專業建議。遵循以下流程：
 
- 注意：整個對話使用中文。一次問 1-2 個問題就好，不要一次全問，讓對話自然流暢。`
-    return base ? `${base}\n${proExtra}` : proExtra
+ 步驟一：先讓使用者描述想拍什麼畫面。
+ 步驟二：逐一確認細節（每次問 1-2 項），並**提供選項讓使用者選擇**：
+  - 場景：哪裡？室內還是戶外？例如「海邊夕陽很浪漫，或者咖啡廳文青風也不錯？」
+  - 姿勢：提供具體選項。例如「${character.name}可以回頭微笑、撩頭髮、喝飲料、倚靠欄杆、低頭滑手機～你喜歡哪種？」
+  - 風格：寫實自然、夢幻、電影感、可愛還是性感？
+  - 光源：自然光、夕陽、霓虹、燭光？
+  - 構圖：特寫、半身、全身、男友視角？
+  - 品質要求：高畫質、精細細節？
+  - 服裝：根據場景建議適合的穿著
+ 步驟三：收集所有必要元素後，**務必嚴格按照以下格式輸出**（包含 [PROMPT] 和 [/PROMPT] 標籤）：
+
+ [PROMPT]以 ${character.name} 為主角的詳細照片提示，包含主體動作、場景氛圍、風格、光源、構圖、品質、光影和細節描述[/PROMPT]
+
+ ⚠️ 重要：最終輸出**必須**包含 [PROMPT]...[/PROMPT] 標籤，否則無法生成照片。標籤內是你要生成的完整照片描述，不要有任何其它文字在標籤內。
+
+ 整個對話使用中文。一次問 1-2 個問題就好，讓對話自然流暢。`
+    return base ? `${base}${selfRule}${proExtra}` : `${proExtra}${selfRule}`
   }
 
   const sendMessage = async () => {
@@ -167,18 +172,41 @@ export default function Chat({ character, onChangeCharacter }) {
       const data = await res.json()
       const reply = data.choices?.[0]?.message?.content || '...'
 
-      /* pro mode: detect [PROMPT] tag for auto image generation */
+      /* pro mode: detect generation trigger for auto image generation */
       if (proMode) {
-        const promptMatch = reply.match(/\[PROMPT\]([\s\S]*?)\[\/PROMPT\]/)
-        if (promptMatch) {
-          const expandedPrompt = promptMatch[1].trim()
-          const cleanReply = reply.replace(/\[PROMPT\][\s\S]*?\[\/PROMPT\]/, '').trim()
+        let expandedPrompt = null
+
+        /* pattern 1: [PROMPT]...[/PROMPT] (primary format) */
+        const tagMatch = reply.match(/\[PROMPT\]([\s\S]*?)\[\/PROMPT\]/)
+        if (tagMatch) expandedPrompt = tagMatch[1].trim()
+
+        /* pattern 2: markdown code block ```
+        if (!expandedPrompt) {
+          const codeMatch = reply.match(/```(?:plaintext)?\s*([\s\S]*?)```/)
+          if (codeMatch) expandedPrompt = codeMatch[1].trim()
+        }
+
+        /* pattern 3: long descriptive text (no question marks = final output) */
+        if (!expandedPrompt && reply.length > 80 && !reply.includes('？') && !reply.includes('?')) {
+          const proMsgs = messages.filter(m => m.role === 'assistant')
+          if (proMsgs.length >= 1) {
+            /* strip conversational framing */
+            let candidate = reply.replace(/^(好的|OK|好|來了|準備好了|以下是|這就為你).{0,20}[:：]/i, '')
+            if (candidate.length > 50) expandedPrompt = candidate.trim()
+          }
+        }
+
+        if (expandedPrompt) {
+          const cleanReply = reply
+            .replace(/\[PROMPT\][\s\S]*?\[\/PROMPT\]/, '')
+            .replace(/```[\s\S]*?```/, '')
+            .trim()
           setMessages(prev => [...prev, {
             id: uid(), role: 'assistant',
             content: cleanReply || '📸 幫你生成大師級男友視覺照片中...',
           }])
-          setProMode(false) /* exit pro mode */
-          setLoading(false) /* release chat loading before image gen starts */
+          setProMode(false)
+          setLoading(false)
           await generateImageFromPrompt(expandedPrompt)
           return
         }
@@ -213,14 +241,33 @@ export default function Chat({ character, onChangeCharacter }) {
   }
 
   /* AI expand prompt for more detail and randomness */
-  const expandPrompt = async (base, signal) => {
-    const styleHint = styleMode === 'sexy'
-      ? '時尚性感、成熟嫵媚、自信迷人'
-      : styleMode === 'cute' ? '可愛活潑、清新自然、甜美療癒'
-      : '自然風格、真實生活感'
-    const sysMsg = `你是專業攝影師，請將以下照片提示擴寫成更豐富、更多細節、每次輸出都不同的版本。\
-加入光線描述、色彩氛圍、情緒表情、隨機環境細節。維持中文敘述。\
-風格方向：${styleHint}。只輸出擴寫後的提示，不要任何前言或說明。`
+  const expandPrompt = async (base, signal, hasRef = false) => {
+    const today = new Date()
+    const season = ['冬','春','春','春','夏','夏','夏','秋','秋','秋','冬','冬'][today.getMonth()]
+    const hour = today.getHours()
+    const timeOfDay = hour < 6 ? '凌晨' : hour < 9 ? '早晨' : hour < 12 ? '上午' : hour < 14 ? '中午' : hour < 17 ? '下午' : hour < 19 ? '黃昏' : '夜晚'
+    const weathers = ['晴朗','微雲','多雲','陽光普照','和煦']
+    const weather = weathers[Math.floor(Math.random() * weathers.length)]
+
+    const styleHint = '自然風格、真實生活感'
+
+    const clothingRule = hasRef
+      ? '1. 🧥 服裝：保持服裝不變（如果有參考圖），除非使用者明確要求換衣服。'
+      : '1. 🧥 服裝：根據場景場合選擇合適的服裝。例如洋裝、T恤牛仔褲、襯衫短裙、連身褲、針織衫、運動服等。'
+
+    const sysMsg = `你是專業攝影師，每次都要輸出截然不同的照片提示。\
+除非使用者指定其他人，否則主體預設是「${character.name}」（即照片中的人物）。\
+根據場景和角色的身體特徵，加入以下所有元素（每次都不同）：
+
+${clothingRule}
+2. 🧍 姿勢：每次都要換一種姿勢。例如回頭微笑、撩頭髮、低頭滑手機、喝飲料、整理衣領、倚靠牆邊、蹲下綁鞋帶、伸懶腰等。
+3. ☁️ 天氣：加入天氣描述（${weather}）。
+4. 🌅 時間光線：現在是${timeOfDay}，${season}季，加入對應的自然光描述。
+5. 🎨 色彩基調：配合場景和風格選擇整體色調。
+6. 😊 表情情緒：每次換一種表情情緒。
+
+⚠️ 重要：如果使用者的提示中明確要求「保持某元素不變」或「同一服裝」等，務必優先遵守使用者的指示，不要擅自更改。
+風格方向：${styleHint}。只輸出擴寫後的提示（一段中文，不要前言、不要說明、不要換行）。`
     const res = await fetch(`${AGNES_BASE}/chat/completions`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${AGNES_API_KEY}`, 'Content-Type': 'application/json' },
@@ -230,7 +277,7 @@ export default function Chat({ character, onChangeCharacter }) {
           { role: 'system', content: sysMsg },
           { role: 'user', content: base },
         ],
-        temperature: 0.95, max_tokens: 512,
+        temperature: 0.95, max_tokens: 768,
       }),
       signal,
     })
@@ -246,25 +293,25 @@ export default function Chat({ character, onChangeCharacter }) {
 
     abortRef.current = new AbortController()
     const signal = abortRef.current.signal
-    setGenLoading(true); setGenStatus('✏️'); setError('')
+    setGenLoading(true); setGenStatus('✏️'); setGenProgress(5); setError('')
 
     try {
       const bodyDesc = buildBodyDesc(character)
-      const refClause = character.refImageUrl ? '角色外貌保持不變（臉部、髮型、體型完全與參考圖一致）' : ''
-      const styleHint = styleMode === 'sexy' ? '時尚性感風格' : styleMode === 'cute' ? '可愛活潑風格' : ''
-      const basePrompt = styleHint
-        ? `${refClause}${refClause ? '，' : ''}${bodyDesc}，${styleHint}，${promptText}`.replace(/^，/, '')
-        : `${refClause}${refClause ? '，' : ''}${bodyDesc}，${promptText}`.replace(/^，/, '')
+      const hasRef = !!character.refImageUrl
+      const refClause = hasRef ? '角色外貌保持不變（臉部、髮型、體型、服裝完全與參考圖一致）' : ''
+      const basePrompt = `${refClause}${refClause ? '，' : ''}${bodyDesc}，${promptText}`.replace(/^，/, '')
 
       /* step 1: AI expand with randomness */
-      setGenStatus('✏️')
-      const expandedPrompt = await expandPrompt(basePrompt, signal)
+      setGenStatus('✏️'); setGenProgress(20)
+      const expandedPrompt = await expandPrompt(basePrompt, signal, hasRef)
       if (signal.aborted) return
+      setGenProgress(45)
 
       /* step 2: send expanded prompt to image API */
-      setGenStatus('🎨')
+      setGenStatus('🎨'); setGenProgress(50)
       const finalPrompt = `${expandedPrompt}。高畫質、精細細節、寫實風格`
       const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, signal)
+      setGenProgress(95)
       if (signal.aborted) return
 
       const label = selectedScene ? SCENES.find(s => s.id === selectedScene)?.label : '自訂'
@@ -272,7 +319,11 @@ export default function Chat({ character, onChangeCharacter }) {
         id: uid(), role: 'assistant', type: 'image',
         imageUrl: dataUrl, content: `📸 生成了「${label}」的圖片`,
       }
-      setMessages(prev => [...prev, imageMsg])
+      const promptMsg = character.showPrompt ? {
+        id: uid(), role: 'assistant', type: 'prompt',
+        content: `💡 ${expandedPrompt}`,
+      } : null
+      setMessages(prev => [...prev, imageMsg, ...(promptMsg ? [promptMsg] : [])])
 
       /* persist to image history */
       const record = { id: `img_${Date.now()}`, imageUrl: dataUrl, scene: selectedScene, prompt: promptText, timestamp: Date.now() }
@@ -287,27 +338,33 @@ export default function Chat({ character, onChangeCharacter }) {
       if (err.name === 'AbortError') return
       setError(err.message)
     }
-    finally { setGenLoading(false); setGenStatus(''); abortRef.current = null }
+    finally { setGenLoading(false); setGenStatus(''); setGenProgress(0); abortRef.current = null }
   }
 
   /* auto-generate image from AI-crafted prompt in pro mode */
   const generateImageFromPrompt = async (expandedPrompt, label = '大師級作品') => {
     abortRef.current = new AbortController()
     const signal = abortRef.current.signal
-    setGenLoading(true); setGenStatus('🎨')
+    setGenLoading(true); setGenStatus('🎨'); setGenProgress(10)
     const bodyDesc = buildBodyDesc(character)
-    const refClause = character.refImageUrl ? '角色外貌保持不變（臉部、髮型、體型完全與參考圖一致）' : ''
+    const refClause = character.refImageUrl ? '角色外貌保持不變（臉部、髮型、體型、服裝完全與參考圖一致）' : ''
     const finalPrompt = `${refClause}${refClause ? '，' : ''}${bodyDesc}，${expandedPrompt}。高畫質、精細細節、寫實風格`.replace(/^，/, '')
 
     try {
+      setGenProgress(30)
       const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, signal)
       if (signal.aborted) return
+      setGenProgress(95)
 
       const imageMsg = {
         id: uid(), role: 'assistant', type: 'image',
         imageUrl: dataUrl, content: `📸 大師級男友視覺作品 — ${label}`,
       }
-      setMessages(prev => [...prev, imageMsg])
+      const promptMsg = character.showPrompt ? {
+        id: uid(), role: 'assistant', type: 'prompt',
+        content: `💡 ${finalPrompt}`,
+      } : null
+      setMessages(prev => [...prev, imageMsg, ...(promptMsg ? [promptMsg] : [])])
 
       /* persist to image history */
       const record = { id: `img_${Date.now()}`, imageUrl: dataUrl, scene: 'pro', prompt: expandedPrompt, timestamp: Date.now() }
@@ -322,7 +379,7 @@ export default function Chat({ character, onChangeCharacter }) {
       if (err.name === 'AbortError') return
       setError(err.message)
     }
-    finally { setGenLoading(false); setGenStatus(''); abortRef.current = null }
+    finally { setGenLoading(false); setGenStatus(''); setGenProgress(0); abortRef.current = null }
   }
 
   const toggleImgMode = () => {
@@ -376,6 +433,8 @@ export default function Chat({ character, onChangeCharacter }) {
                   </button>
                   </div>
                 </>
+              ) : msg.type === 'prompt' ? (
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>{msg.content}</p>
               ) : (
                 msg.content
               )}
@@ -395,6 +454,16 @@ export default function Chat({ character, onChangeCharacter }) {
 
       {imgMode && (
         <div className="chat-img-panel" style={{ padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+          {!character.refImageUrl && (
+            <div style={{
+              padding: '8px 12px', marginBottom: 10, borderRadius: 'var(--radius-sm)',
+              background: 'rgba(255, 193, 7, 0.1)', border: '1px solid rgba(255, 193, 7, 0.3)',
+              fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5,
+            }}>
+              ⚠️ 未設定角色外貌參考圖，生成的角色臉部可能不一致。
+              到 <strong>設定</strong> 頁面上傳參考圖可保持角色穩定性。
+            </div>
+          )}
           {/* mode toggle */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
             <button className={`scene-btn ${!proMode ? 'selected' : ''}`}
@@ -432,29 +501,25 @@ export default function Chat({ character, onChangeCharacter }) {
                   </button>
                 ))}
               </div>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                <button className={`scene-btn ${styleMode === 'cute' ? 'selected' : ''}`}
-                  onClick={() => setStyleMode(v => v === 'cute' ? '' : 'cute')}
-                  style={{ flex: 1, padding: '10px 8px', fontSize: '0.85rem' }}>
-                  🌸 可愛活潑
-                </button>
-                <button className={`scene-btn ${styleMode === 'sexy' ? 'selected' : ''}`}
-                  onClick={() => setStyleMode(v => v === 'sexy' ? '' : 'sexy')}
-                  style={{ flex: 1, padding: '10px 8px', fontSize: '0.85rem' }}>
-                  🔥 時尚性感
-                </button>
-              </div>
               <textarea className="chat-input" rows={6} value={customPrompt}
                 onChange={e => { setCustomPrompt(e.target.value); setSelectedScene(null); setError('') }}
                 placeholder="或自訂情境描述，例如：在雪山頂上看日出..."
                 style={{ width: '100%', marginBottom: 8 }} disabled={genLoading} />
               {genLoading ? (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="chat-send" style={{ flex: 1 }} disabled>
-                    {genStatus || '🎨'} 處理中...
-                  </button>
+                <div>
+                  <div className="gen-progress-wrap">
+                    <div className="gen-progress-bar">
+                      <div className="gen-progress-fill" style={{ width: genProgress + '%' }} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', flex: 1 }}>
+                      {genStatus} {genStatus === '✏️' ? 'AI 擴寫提示中...' : genStatus === '🎨' ? '生成圖片中...' : '處理中...'}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{genProgress}%</span>
+                  </div>
                   <button className="chat-send" onClick={cancelGen}
-                    style={{ flexShrink: 0, background: 'transparent', border: '1px solid #ff6b6b', color: '#ff6b6b' }}>
+                    style={{ width: '100%', background: 'transparent', border: '1px solid #ff6b6b', color: '#ff6b6b' }}>
                     ✕ 取消
                   </button>
                 </div>
