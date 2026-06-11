@@ -39,7 +39,7 @@
 .chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Settings */
-.settings { max-width: 500px; margin: 0 auto; }
+.settings { max-width: 500px; margin: 0 auto; padding-bottom: 32px; }
 .settings h2 { font-size: 1.25rem; margin-bottom: 20px; color: var(--pink-light); }
 .setting-group { margin-bottom: 20px; }
 .setting-group label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
