@@ -140,5 +140,5 @@ input.body-age-input { width: 80px; padding: 8px 12px; font-size: 0.9rem; }
   .album-date { font-size: 0.75rem; }
   .album-prompt { font-size: 0.8rem; }
   .ref-preview { width: 100px; height: 100px; }
-  .chat-container .tab { font-size: 1rem; padding: 8px 10px; min-width: 44px; min-height: 44px; }
+  .chat-container .tab { flex: none; font-size: 0.9rem; padding: 6px 0; min-width: 36px; min-height: 36px; width: 36px; }
 }

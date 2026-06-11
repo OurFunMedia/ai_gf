@@ -54,6 +54,7 @@ export default function Chat({ character, onChangeCharacter }) {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [viewerUrl, setViewerUrl] = useState(null)
   const messagesEndRef = useRef(null)
 
   /* image gen */
@@ -337,7 +338,7 @@ export default function Chat({ character, onChangeCharacter }) {
         {messages.map((msg) => (
           <div key={msg.id} className={`message ${msg.role}`} style={{ position: 'relative' }}>
             <div className="message-avatar">{msg.role === 'assistant' ? '♡' : '☺'}</div>
-            <div className="message-bubble" style={{ position: 'relative' }}>
+            <div className="message-bubble" style={{ position: 'relative', ...(msg.type === 'image' ? { width: '50%' } : {}) }}>
               <button onClick={() => deleteMessage(msg.id)}
                 style={{
                   position: 'absolute', top: 2, right: 4,
@@ -349,7 +350,7 @@ export default function Chat({ character, onChangeCharacter }) {
               {msg.type === 'image' ? (
                 <>
                   <p style={{ marginBottom: 8 }}>{msg.content}</p>
-                  <img src={msg.imageUrl} alt="" style={{ width: '100%', borderRadius: 'var(--radius-sm)' }} />
+                  <img src={msg.imageUrl} alt="" onClick={() => setViewerUrl(msg.imageUrl)} style={{ width: '100%', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }} />
                   <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button onClick={() => downloadImage(msg.imageUrl)}
                     style={{
@@ -469,14 +470,24 @@ export default function Chat({ character, onChangeCharacter }) {
 
       <div className="chat-input-area">
         <button className={`tab ${imgMode ? 'active' : ''}`} onClick={toggleImgMode}
-          style={{ padding: '8px 12px', fontSize: '1.1rem', flexShrink: 0 }} title="生成圖片">
-          🎨
+          style={{ flexShrink: 0 }} title="生成圖片">
+          📸
         </button>
         <textarea className="chat-input" rows={1} value={input}
           onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
           placeholder={proMode ? `描述你想拍的畫面...` : `跟${character.name}說說話...`} disabled={loading || genLoading} />
         <button className="chat-send" onClick={sendMessage} disabled={loading || !input.trim()}>送出</button>
       </div>
+
+      {/* full-screen image viewer */}
+      {viewerUrl && (
+        <div className="album-viewer-overlay" onClick={() => setViewerUrl(null)}>
+          <div className="album-viewer-content" onClick={e => e.stopPropagation()}>
+            <button className="album-viewer-close" onClick={() => setViewerUrl(null)}>✕</button>
+            <img src={viewerUrl} alt="" />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
