@@ -86,17 +86,11 @@ export default function App() {
             <button className={`tab ${tab === 'chat' ? 'active' : ''}`} onClick={() => setTab('chat')}>💬 聊天</button>
             <button className={`tab ${tab === 'image' ? 'active' : ''}`} onClick={() => setTab('image')}>🖼️ 相簿</button>
             <button className={`tab ${tab === 'settings' ? 'active' : ''}`} onClick={() => setTab('settings')}>🎀 設定</button>
-            {tab === 'chat' && (
-              <button className="tab" onClick={handleClearChat}
-                style={{ marginLeft: 'auto', color: '#ff6b6b', fontSize: '0.8rem' }}>
-                🗑️ 清除
-              </button>
-            )}
           </nav>
         </header>
         <main className="main">
           {tab === 'chat' && <Chat character={character} onChangeCharacter={handleCharacterChange} />}
-          {tab === 'settings' && <CharacterSettings character={character} onChange={handleCharacterChange} />}
+          {tab === 'settings' && <CharacterSettings character={character} onChange={handleCharacterChange} onClearChat={handleClearChat} />}
           {tab === 'image' && <ImageGen character={character} />}
         </main>
       </div>

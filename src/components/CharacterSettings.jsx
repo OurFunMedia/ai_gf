@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function CharacterSettings({ character, onChange }) {
+export default function CharacterSettings({ character, onChange, onClearChat }) {
   const [localName, setLocalName] = useState(character.name)
   const [localPersonality, setLocalPersonality] = useState(character.personality)
   const [localRefUrl, setLocalRefUrl] = useState(character.refImageUrl)
@@ -122,6 +122,17 @@ export default function CharacterSettings({ character, onChange }) {
         options={['清純', '性感', '可愛', '優雅', '鄰家']} />
 
       <button className="gen-btn" style={{ marginTop: 12 }} onClick={save}>儲存設定</button>
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '32px 0 16px' }} />
+      <h3 style={{ fontSize: '1rem', color: '#ff6b6b', marginBottom: 12 }}>⚠️ 危險區域</h3>
+      <button onClick={onClearChat}
+        style={{
+          padding: '10px 20px', borderRadius: 'var(--radius-sm)',
+          background: 'transparent', border: '1px solid #ff6b6b', color: '#ff6b6b',
+          fontSize: '0.9rem', cursor: 'pointer', width: '100%',
+        }}>
+        🗑️ 清除所有聊天記錄
+      </button>
     </div>
   )
 }
