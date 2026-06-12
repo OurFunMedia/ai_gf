@@ -360,6 +360,8 @@ export default function Chat({ character, onChangeCharacter }) {
     if (images.length > 0) {
       if (hasMulti) payload.tags = ['img2img']
       payload.extra_body = { image: images, response_format: 'b64_json' }
+    } else {
+      payload.response_format = 'b64_json'
     }
     const res = await fetch(`${AGNES_BASE}/images/generations`, {
       method: 'POST',
@@ -466,6 +468,10 @@ ${clothingRule}
 
 Style direction: ${style}
 
+You MUST include the character's full body description (age, height, figure, bust, waist, hips, style) in the prompt so the image model knows exactly what the character looks like.${hasRef ? `
+
+IMPORTANT — A reference photo of the character will be provided to the image model. Your prompt MUST explicitly tell the image model what to keep unchanged vs what to change. Begin the prompt with: "KEEP: [face, hairstyle, body, clothing unchanged]. CHANGE: [background/scene completely to the new setting below]." Then describe the scene as usual, including the character's body description. This ensures img2img generates a completely different background while preserving the character's identity.` : ''}
+
 Output ONLY the expanded English prompt. One paragraph. No explanations, no prefixes, no line breaks. Keep character name "${character.name}" in the prompt.
 
 Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in the user's message — rule 1 takes precedence.`
@@ -478,7 +484,7 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
           { role: 'system', content: sysMsg },
           { role: 'user', content: userPrompt },
         ],
-        temperature: 1.0, max_tokens: 1024,
+        temperature: 1.0, max_tokens: 4096,
         chat_template_kwargs: { enable_thinking: true },
       }),
       signal,
@@ -662,6 +668,7 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
 
       {imgMode && (
         <div className="chat-img-panel" style={{ padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+          {!genLoading && (<>
           {!character.refImageUrl && (
             <div style={{
               padding: '8px 12px', marginBottom: 10, borderRadius: 'var(--radius-sm)',
@@ -871,6 +878,7 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
               </p>
             )}
           </div>
+          </>)}
 
           {/* Shared progress bar (any mode) */}
           {genLoading && (
