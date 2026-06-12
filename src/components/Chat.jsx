@@ -198,6 +198,8 @@ export default function Chat({ character, onChangeCharacter }) {
     const newMessages = [...messages, { id: uid(), role: 'user', content: userMsg }]
     setMessages(newMessages)
     setLoading(true)
+    const placeholderId = uid()
+    setMessages(prev => [...prev, { id: placeholderId, role: 'assistant', content: '' }])
     abortRef.current = new AbortController()
     try {
       const systemContent = getSystemContent()
@@ -208,7 +210,7 @@ export default function Chat({ character, onChangeCharacter }) {
           ...newMessages.map(m => ({ role: m.role, content: m.content })),
         ],
         temperature: 0.8, max_tokens: 1024,
-        chat_template_kwargs: { enable_thinking: true },
+        stream: true,
       }
       const res = await fetch(`${AGNES_BASE}/chat/completions`, {
         method: 'POST',
@@ -217,42 +219,84 @@ export default function Chat({ character, onChangeCharacter }) {
         signal: abortRef.current.signal,
       })
       if (!res.ok) throw new Error(`API error: ${res.status}`)
-      const data = await res.json()
-      const reply = data.choices?.[0]?.message?.content || '...'
+
+      /* stream SSE chunks */
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let fullContent = ''
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const data = line.slice(6).trim()
+          if (data === '[DONE]') continue
+          try {
+            const parsed = JSON.parse(data)
+            const delta = parsed.choices?.[0]?.delta?.content
+            if (delta) {
+              fullContent += delta
+              setMessages(prev => prev.map(m =>
+                m.id === placeholderId ? { ...m, content: fullContent } : m
+              ))
+            }
+          } catch { /* skip malformed chunks */ }
+        }
+      }
+
+      /* drain remaining buffer */
+      if (buffer.startsWith('data: ')) {
+        const data = buffer.slice(6).trim()
+        if (data !== '[DONE]') {
+          try {
+            const parsed = JSON.parse(data)
+            const delta = parsed.choices?.[0]?.delta?.content
+            if (delta) fullContent += delta
+          } catch {}
+        }
+      }
+      setMessages(prev => prev.map(m =>
+        m.id === placeholderId ? { ...m, content: fullContent } : m
+      ))
 
       /* pro mode: detect generation trigger for auto image generation */
       if (proMode) {
         let expandedPrompt = null
 
         /* pattern 1: [PROMPT]...[/PROMPT] (primary format) */
-        const tagMatch = reply.match(/\[PROMPT\]([\s\S]*?)\[\/PROMPT\]/)
+        const tagMatch = fullContent.match(/\[PROMPT\]([\s\S]*?)\[\/PROMPT\]/)
         if (tagMatch) expandedPrompt = tagMatch[1].trim()
 
-        /* pattern 2: markdown code block ```
+        /* pattern 2: markdown code block */
         if (!expandedPrompt) {
-          const codeMatch = reply.match(/```(?:plaintext)?\s*([\s\S]*?)```/)
+          const codeMatch = fullContent.match(/```(?:plaintext)?\s*([\s\S]*?)```/)
           if (codeMatch) expandedPrompt = codeMatch[1].trim()
         }
 
         /* pattern 3: long descriptive text (no question marks = final output) */
-        if (!expandedPrompt && reply.length > 80 && !reply.includes('？') && !reply.includes('?')) {
+        if (!expandedPrompt && fullContent.length > 80 && !fullContent.includes('？') && !fullContent.includes('?')) {
           const proMsgs = messages.filter(m => m.role === 'assistant')
           if (proMsgs.length >= 1) {
-            /* strip conversational framing */
-            let candidate = reply.replace(/^(好的|OK|好|來了|準備好了|以下是|這就為你).{0,20}[:：]/i, '')
+            let candidate = fullContent.replace(/^(好的|OK|好|來了|準備好了|以下是|這就為你).{0,20}[:：]/i, '')
             if (candidate.length > 50) expandedPrompt = candidate.trim()
           }
         }
 
         if (expandedPrompt) {
-          const cleanReply = reply
+          const cleanReply = fullContent
             .replace(/\[PROMPT\][\s\S]*?\[\/PROMPT\]/, '')
             .replace(/```[\s\S]*?```/, '')
             .trim()
-          setMessages(prev => [...prev, {
-            id: uid(), role: 'assistant',
-            content: cleanReply || '📸 幫你生成大師級男友視覺照片中...',
-          }])
+          setMessages(prev => prev.map(m =>
+            m.id === placeholderId ? { ...m, content: cleanReply || '📸 幫你生成大師級男友視覺照片中...' } : m
+          ))
           setProMode(false)
           setLoading(false)
           await generateImageFromPrompt(expandedPrompt)
@@ -260,7 +304,6 @@ export default function Chat({ character, onChangeCharacter }) {
         }
       }
 
-      setMessages(prev => [...prev, { id: uid(), role: 'assistant', content: reply }])
     } catch (err) { if (err.name !== 'AbortError') setError(err.message) }
     finally { setLoading(false); abortRef.current = null }
   }
@@ -564,12 +607,6 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
             </div>
           </div>
         ))}
-        {loading && (
-          <div className="message assistant">
-            <div className="message-avatar">♡</div>
-            <div className="message-bubble">...</div>
-          </div>
-        )}
         <div ref={messagesEndRef} />
       </div>
 
