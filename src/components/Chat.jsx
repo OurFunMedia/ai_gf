@@ -271,16 +271,54 @@ export default function Chat({ character, onChangeCharacter }) {
     return `data:image/png;base64,${b64}`
   }
 
-  /* AI expand prompt for more detail and randomness */
+  /* AI expand prompt with randomness — English output for better Agnes image quality */
   const expandPrompt = async (base, signal, hasRef = false) => {
     const today = new Date()
-    const season = ['冬','春','春','春','夏','夏','夏','秋','秋','秋','冬','冬'][today.getMonth()]
+    const season = ['winter','spring','spring','spring','summer','summer','summer','autumn','autumn','autumn','winter','winter'][today.getMonth()]
     const hour = today.getHours()
-    const timeOfDay = hour < 6 ? '凌晨' : hour < 9 ? '早晨' : hour < 12 ? '上午' : hour < 14 ? '中午' : hour < 17 ? '下午' : hour < 19 ? '黃昏' : '夜晚'
-    const weathers = ['晴朗','微雲','多雲','陽光普照','和煦']
+    const timeOfDay = hour < 6 ? 'early morning' : hour < 9 ? 'morning' : hour < 12 ? 'late morning' : hour < 14 ? 'noon' : hour < 17 ? 'afternoon' : hour < 19 ? 'golden hour' : 'night'
+
+    /* large random pools for variety */
+    const weathers = ['sunny','clear','partly cloudy','overcast','golden haze','misty','foggy','dew-kissed','rain-washed','crisp autumn','warm breeze','soft overcast','dramatic clouds','hazy','bright','fair']
     const weather = weathers[Math.floor(Math.random() * weathers.length)]
 
-    const styleHint = '自然風格、真實生活感'
+    const styles = [
+      'cinematic realism, natural everyday aesthetic',
+      'candid photography, warm intimate atmosphere',
+      'film still, soft dreamy quality',
+      'fashion editorial, clean modern look',
+      'vintage film stock, warm tones',
+      'lifestyle photography, authentic moment',
+      'romantic soft focus, pastel palette',
+      'street photography style, natural light',
+      'minimalist aesthetic, clean composition',
+      'warm analog film, slight grain',
+    ]
+    const style = styles[Math.floor(Math.random() * styles.length)]
+
+    const colorPalettes = [
+      'warm earthy tones, soft browns and creams',
+      'cool pastels, mint and lavender hues',
+      'golden amber and warm neutrals',
+      'muted vintage tones, faded memory palette',
+      'soft pink and warm ivory',
+      'natural greens and warm sunlight',
+      'monochromatic soft gray scale with warm accent',
+      'cream, beige and dusty rose',
+    ]
+    const colorPalette = colorPalettes[Math.floor(Math.random() * colorPalettes.length)]
+
+    const cameraAngles = [
+      'shot from slightly below, intimate eye-level perspective',
+      'boyfriend POV, natural eye-level framing',
+      'shot from slightly above, soft down-angle',
+      'close-up, shallow depth of field',
+      'medium shot, environmental context visible',
+      'three-quarter angle, natural candid framing',
+      'over-the-shoulder perspective',
+      'waist-level shot, everyday casual framing',
+    ]
+    const cameraAngle = cameraAngles[Math.floor(Math.random() * cameraAngles.length)]
 
     /* if user uploaded accessories, force AI to keep them in the scene */
     const wearItems = accessories.length > 0
@@ -290,19 +328,26 @@ export default function Chat({ character, onChangeCharacter }) {
       ? `1. 🧥 服裝：保持服裝不變，${wearItems}除非使用者明確要求換衣服。`
       : '1. 🧥 服裝：根據場景場合選擇合適的服裝。例如洋裝、T恤牛仔褲、襯衫短裙、連身褲、針織衫、運動服等。'
 
-    const sysMsg = `你是專業攝影師，每次都要輸出截然不同的照片提示。\
-除非使用者指定其他人，否則主體預設是「${character.name}」（即照片中的人物）。\
-根據場景和角色的身體特徵，加入以下所有元素（每次都不同）：
+    const sysMsg = `You are a professional photographer and cinematographer. Your task is to expand a short scene description into a rich, detailed English image prompt for a photo-realistic generation model.
+
+The subject is always "${character.name}" (the character in the photo).
+
+Based on the character's body features and the scene, generate a prompt that includes ALL of the following elements (each time with different choices):
 
 ${clothingRule}
-2. 🧍 姿勢：每次都要換一種姿勢。例如回頭微笑、撩頭髮、低頭滑手機、喝飲料、整理衣領、倚靠牆邊、蹲下綁鞋帶、伸懶腰等。
-3. ☁️ 天氣：加入天氣描述（${weather}）。
-4. 🌅 時間光線：現在是${timeOfDay}，${season}季，加入對應的自然光描述。
-5. 🎨 色彩基調：配合場景和風格選擇整體色調。
-6. 😊 表情情緒：每次換一種表情情緒。
+2. 🧍 Pose: Choose a unique pose different from last time. Examples: looking back with a smile, playing with hair,低頭 scrolling phone, holding a drink, leaning against a wall, adjusting collar, tying shoelaces, stretching, looking out a window, walking naturally, sitting on a bench, browsing bookshelf, holding a coffee cup, laughing naturally.
+3. ☁️ Weather/Atmosphere: ${weather}
+4. 🌅 Time/Lighting: ${timeOfDay}, ${season}. Describe natural light effect accordingly.
+5. 🎨 Color Palette: ${colorPalette}
+6. 😊 Expression/Mood: Choose a natural expression — gentle smile, thoughtful gaze, cheerful laugh, sleepy eyes, curious look, content expression, playful wink, calm serene face.
+7. 📷 Camera: ${cameraAngle}
+8. ✨ Quality: ultra-detailed skin texture, natural skin pores, realistic eye catchlight, natural hair strands, photorealistic, 8K
 
-⚠️ 重要：如果使用者的提示中明確要求「保持某元素不變」或「同一服裝」等，務必優先遵守使用者的指示，不要擅自更改。
-風格方向：${styleHint}。只輸出擴寫後的提示（一段中文，不要前言、不要說明、不要換行）。`
+Style direction: ${style}
+
+Output ONLY the expanded English prompt. One paragraph. No explanations, no prefixes, no line breaks. Keep character name "${character.name}" in the prompt.
+
+Important: If the user instruction says "keep X unchanged" or "same clothing", always respect that.`
     const res = await fetch(`${AGNES_BASE}/chat/completions`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${AGNES_API_KEY}`, 'Content-Type': 'application/json' },
@@ -312,7 +357,8 @@ ${clothingRule}
           { role: 'system', content: sysMsg },
           { role: 'user', content: base },
         ],
-        temperature: 0.95, max_tokens: 768,
+        temperature: 1.0, max_tokens: 1024,
+        chat_template_kwargs: { enable_thinking: true },
       }),
       signal,
     })
