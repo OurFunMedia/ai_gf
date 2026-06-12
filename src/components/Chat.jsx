@@ -9,15 +9,6 @@ const AGNES_IMAGE_MODEL = import.meta.env.VITE_AGNES_IMAGE_MODEL
 const WELCOME = (name) => `嗨～我是${name}！今天過得怎麼樣呀？😊`
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
 
-const SCENES = [
-  { id: 'beach', icon: '🏖️', label: '沙灘', prompt: '單人照片，在沙灘上赤腳漫步回頭微笑，海風吹動髮絲與裙擺，藍天白雲與海浪，自然清爽風格，男友視角半身構圖' },
-  { id: 'cafe', icon: '☕', label: '咖啡廳約會', prompt: '單人照片，在溫馨咖啡廳靠窗座位，手拿一杯拿鐵看向窗外，窗邊自然光灑落，舒適文青氛圍，男友視角半身特寫' },
-  { id: 'bookstore', icon: '📚', label: '書店', prompt: '單人照片，在獨立書店裡站在書架前翻書，專注閱讀的側臉，暖黃色燈光，安靜文藝氛圍，男友視角半身構圖' },
-  { id: 'park', icon: '🌿', label: '公園散步', prompt: '單人照片，在翠綠公園小徑上散步回頭微笑，陽光穿過樹葉灑下斑駁光影，自然清新風格，男友視角全身構圖' },
-  { id: 'shopping', icon: '🛍️', label: '逛街試穿', prompt: '單人照片，在服飾店裡試穿衣服，對著鏡子整理衣領，店內暖色燈光，時尚都會風格，男友視角全身構圖' },
-  { id: 'bedroom', icon: '🛋️', label: '睡房', prompt: '單人照片，在溫馨的睡房裡坐在床邊整理頭髮，窗外午後陽光柔和灑入，舒適放鬆的居家氛圍，男友視角半身構圖' },
-]
-
 /* build natural language body description from character settings */
 const downloadImage = (url) => {
   const d = new Date()
@@ -69,6 +60,10 @@ export default function Chat({ character, onChangeCharacter }) {
   /* accessories for multi-image composition (max 3, each with label pic1-pic3 + required desc) */
   const [accessories, setAccessories] = useState([])
   const fileInputRef = useRef(null)
+
+  /* single outfit image (1 set of clothing) */
+  const [outfit, setOutfit] = useState(null) // { dataUrl, name, desc } | null
+  const outfitInputRef = useRef(null)
 
   const [dragOver, setDragOver] = useState(false)
 
@@ -156,6 +151,29 @@ export default function Chat({ character, onChangeCharacter }) {
 
   const removeAccessory = (id) => {
     setAccessories(prev => prev.filter(a => a.id !== id))
+  }
+
+  const handleOutfitUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (!file || !file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = (ev) => { setOutfit({ dataUrl: ev.target.result, name: file.name, desc: '' }) }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  const removeOutfit = () => setOutfit(null)
+
+  const [outfitDragOver, setOutfitDragOver] = useState(false)
+
+  const handleOutfitDrop = (e) => {
+    e.preventDefault()
+    setOutfitDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (!file || !file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = (ev) => { setOutfit({ dataUrl: ev.target.result, name: file.name, desc: '' }) }
+    reader.readAsDataURL(file)
   }
 
   if (!ready) return null
@@ -326,11 +344,12 @@ export default function Chat({ character, onChangeCharacter }) {
   }
 
   /* shared image API call — supports single-image (2.1-flash) and multi-image (2.0-flash) */
-  const callImageAPI = async (finalPrompt, refUrl, accessoryUrls, signal) => {
-    const hasMulti = accessoryUrls?.length > 0
+  const callImageAPI = async (finalPrompt, refUrl, accessoryUrls, signal, outfitUrl) => {
+    const allRefs = [refUrl, outfitUrl, ...(accessoryUrls || [])].filter(Boolean)
+    const hasMulti = allRefs.length > 1 || accessoryUrls?.length > 0
     const model = hasMulti ? 'agnes-image-2.0-flash' : AGNES_IMAGE_MODEL
     const payload = { model, prompt: finalPrompt, size: '1024x1536' }
-    const images = [refUrl, ...(accessoryUrls || [])].filter(Boolean)
+    const images = allRefs
     if (images.length > 0) {
       if (hasMulti) payload.tags = ['img2img']
       payload.extra_body = { image: images, response_format: 'b64_json' }
@@ -350,10 +369,11 @@ export default function Chat({ character, onChangeCharacter }) {
 
   /* AI expand prompt with randomness — English output for better Agnes image quality */
   const expandPrompt = async (base, signal, hasRef = false) => {
-    const today = new Date()
-    const season = ['winter','spring','spring','spring','summer','summer','summer','autumn','autumn','autumn','winter','winter'][today.getMonth()]
-    const hour = today.getHours()
-    const timeOfDay = hour < 6 ? 'early morning' : hour < 9 ? 'morning' : hour < 12 ? 'late morning' : hour < 14 ? 'noon' : hour < 17 ? 'afternoon' : hour < 19 ? 'golden hour' : 'night'
+    /* random season & time of day — not tied to real time */
+    const seasons = ['early spring','spring','late spring','early summer','summer','midsummer','late summer','early autumn','autumn','late autumn','early winter','winter']
+    const season = seasons[Math.floor(Math.random() * seasons.length)]
+    const timesOfDay = ['dawn','sunrise','early morning','morning','late morning','noon','early afternoon','afternoon','golden hour','sunset','twilight','night','midnight','deep night']
+    const timeOfDay = timesOfDay[Math.floor(Math.random() * timesOfDay.length)]
 
     /* large random pools for variety */
     const weathers = ['sunny','clear','partly cloudy','overcast','golden haze','misty','foggy','dew-kissed','rain-washed','crisp autumn','warm breeze','soft overcast','dramatic clouds','hazy','bright','fair']
@@ -401,9 +421,14 @@ export default function Chat({ character, onChangeCharacter }) {
     const wearItems = accessories.length > 0
       ? `（使用者指定的穿戴物品：${accessories.filter(a => a.desc).map(a => `${a.label} = ${a.desc}`).join('；')}）務必保持這些物品在角色身上，不要移除或改變外觀。`
       : ''
-    const clothingRule = hasRef || accessories.length > 0
-      ? `1. 🧥 服裝：保持服裝不變，${wearItems}除非使用者明確要求換衣服。`
-      : '1. 🧥 服裝：根據場景場合選擇合適的服裝。例如洋裝、T恤牛仔褲、襯衫短裙、連身褲、針織衫、運動服等。'
+    let clothingRule
+    if (outfit?.desc) {
+      clothingRule = `1. 🧥 服裝：角色必須穿著此套服裝：${outfit.desc}。保持服裝外觀不變，但場景、時間、地點、姿勢可以自由創作。`
+    } else if (hasRef || accessories.length > 0) {
+      clothingRule = `1. 🧥 服裝：保持服裝不變，${wearItems}除非使用者明確要求換衣服。`
+    } else {
+      clothingRule = '1. 🧥 服裝：根據場景場合選擇合適的服裝。例如洋裝、T恤牛仔褲、襯衫短裙、連身褲、針織衫、運動服等。'
+    }
 
     const sysMsg = `You are a professional photographer and cinematographer. Your task is to expand a short scene description into a rich, detailed English image prompt for a photo-realistic generation model.
 
@@ -424,7 +449,7 @@ Style direction: ${style}
 
 Output ONLY the expanded English prompt. One paragraph. No explanations, no prefixes, no line breaks. Keep character name "${character.name}" in the prompt.
 
-Important: If the user instruction says "keep X unchanged" or "same clothing", always respect that.`
+Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in the user's message — rule 1 takes precedence.`
     const res = await fetch(`${AGNES_BASE}/chat/completions`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${AGNES_API_KEY}`, 'Content-Type': 'application/json' },
@@ -445,9 +470,47 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
     return expanded || base
   }
 
+  /* random scene concepts for vague/short prompts */
+  const RANDOM_SCENES = [
+    '在沙灘上赤腳漫步看夕陽',
+    '在復古咖啡廳靠窗位喝拿鐵',
+    '在獨立書店翻書',
+    '在春天櫻花樹下野餐',
+    '在雪山山頂看日出',
+    '在深夜便利商店門口喝熱奶茶',
+    '在美術館大廳欣賞畫作',
+    '在河堤騎腳踏車吹風',
+    '在花店門口整理花束',
+    '在天台曬衣服俯瞰城市',
+    '在懷舊唱片行聽黑膠',
+    '在雨中撐傘走過小巷',
+    '在寵物咖啡廳抱貓咪',
+    '在海邊堤防坐著看海',
+    '在夜市吃小吃逛攤位',
+    '在登山步道中途休息',
+    '在摩天輪上俯瞰夜景',
+    '在溫泉旅館戶外泡湯',
+    '在老宅咖啡廳閣樓寫明信片',
+    '在電影院售票口前選片',
+    '在神社參道散步',
+    '在頂樓泳池畔躺椅看書',
+    '在傳統市場挑水果',
+    '在聖誕市集喝熱紅酒',
+    '在植物園溫室賞花',
+    '在復古遊戲機台前玩遊戲',
+    '在圖書館靠窗座位看書',
+    '在日落遊艇上喝香檳',
+    '在竹林小徑散步',
+    '在古董市集挖寶',
+  ]
+
   const generateImage = async () => {
-    const promptText = customPrompt.trim() || (selectedScene ? SCENES.find(s => s.id === selectedScene)?.prompt : '')
-    if (!promptText) { setError('請選擇一個情境或輸入描述'); return }
+    const rawPrompt = customPrompt.trim()
+    if (!rawPrompt) { setError('請選擇一個情境或輸入描述'); return }
+    /* short/vague prompt → inject a concrete random scene */
+    const promptText = rawPrompt.length <= 4
+      ? RANDOM_SCENES[Math.floor(Math.random() * RANDOM_SCENES.length)]
+      : rawPrompt
 
     abortRef.current = new AbortController()
     const signal = abortRef.current.signal
@@ -456,7 +519,9 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
     try {
       const bodyDesc = buildBodyDesc(character)
       const hasRef = !!character.refImageUrl
-      const refClause = hasRef ? '角色外貌保持不變（臉部、髮型、體型、服裝完全與參考圖一致）' : ''
+      const refClause = hasRef
+        ? `角色外貌保持不變（臉部、髮型、體型${outfit?.desc ? '' : '、服裝'}完全與參考圖一致）`
+        : ''
 
       /* build wear description from uploaded accessories */
       let wearClause = ''
@@ -477,11 +542,11 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
       setGenStatus('🎨'); setGenProgress(50)
       const finalPrompt = `${expandedPrompt}。高畫質、精細細節、寫實風格`
       const accessoryUrls = accessories.map(a => a.dataUrl)
-      const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, accessoryUrls, signal)
+      const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, accessoryUrls, signal, outfit?.dataUrl)
       setGenProgress(95)
       if (signal.aborted) return
 
-      const label = selectedScene ? SCENES.find(s => s.id === selectedScene)?.label : '自訂'
+      const label = '自訂'
       const imageMsg = {
         id: uid(), role: 'assistant', type: 'image',
         imageUrl: dataUrl, content: `📸 生成了「${label}」的圖片`,
@@ -514,7 +579,9 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
     const signal = abortRef.current.signal
     setGenLoading(true); setGenStatus('🎨'); setGenProgress(10)
     const bodyDesc = buildBodyDesc(character)
-    const refClause = character.refImageUrl ? '角色外貌保持不變（臉部、髮型、體型、服裝完全與參考圖一致）' : ''
+    const refClause = character.refImageUrl
+      ? `角色外貌保持不變（臉部、髮型、體型${outfit?.desc ? '' : '、服裝'}完全與參考圖一致）`
+      : ''
 
     let wearClause = ''
     if (accessories.length > 0) {
@@ -527,7 +594,7 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
     try {
       setGenProgress(30)
       const accessoryUrls = accessories.map(a => a.dataUrl)
-      const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, accessoryUrls, signal)
+      const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, accessoryUrls, signal, outfit?.dataUrl)
       if (signal.aborted) return
       setGenProgress(95)
 
@@ -569,7 +636,11 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
       <div className="messages">
         {messages.map((msg) => (
           <div key={msg.id} className={`message ${msg.role}`} style={{ position: 'relative' }}>
-            <div className="message-avatar">{msg.role === 'assistant' ? '♡' : '☺'}</div>
+            <div className="message-avatar">
+              {msg.role === 'assistant' && character.refImageUrl ? (
+                <img src={character.refImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : msg.role === 'assistant' ? '♡' : '☺'}
+            </div>
             <div className="message-bubble" style={{ position: 'relative', ...(msg.type === 'image' ? { width: '50%' } : {}) }}>
               <button onClick={() => deleteMessage(msg.id)}
                 style={{
@@ -647,10 +718,82 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
             </button>
           </div>
 
+          {/* outfit + accessories side by side on wide screens */}
+          <div className="outfit-acc-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+
+          {/* outfit upload (1 set of clothing — locks outfit, scene random) */}
+          <div className="outfit-section"
+            onDragOver={e => { e.preventDefault(); setOutfitDragOver(true) }}
+            onDragLeave={() => setOutfitDragOver(false)}
+            onDrop={handleOutfitDrop}
+            style={{
+              flex: '1 1 280px', padding: '10px 12px', borderRadius: 'var(--radius-sm)',
+              background: outfitDragOver ? 'rgba(232,67,147,0.15)' : 'rgba(232,67,147,0.04)',
+              border: outfitDragOver ? '2px dashed var(--pink)' : '1px solid rgba(232,67,147,0.12)',
+              transition: 'all 0.2s',
+            }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+              👗 服裝暫存（上傳 1 張衣服照片，給「虛擬女友」換新裝）
+            </p>
+            {outfit ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ position: 'relative', width: 56, height: 56, borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
+                  <img src={outfit.dataUrl} alt={outfit.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <button onClick={removeOutfit}
+                    style={{
+                      position: 'absolute', top: 1, right: 1,
+                      width: 16, height: 16, borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.6)', color: '#fff',
+                      border: 'none', cursor: 'pointer',
+                      fontSize: '0.5rem', lineHeight: '16px', padding: 0,
+                    }}>✕</button>
+                </div>
+                <input type="text" value={outfit.desc}
+                  onChange={e => setOutfit(prev => prev ? { ...prev, desc: e.target.value } : prev)}
+                  placeholder="描述這套服裝，例如：白色連身裙、草帽、涼鞋"
+                  style={{
+                    flex: 1, padding: '6px 10px', fontSize: '0.75rem',
+                    borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+                    background: 'var(--bg-input)', color: 'var(--text)',
+                    outline: 'none', boxSizing: 'border-box',
+                  }} />
+              </div>
+            ) : outfitDragOver ? (
+              <p style={{ fontSize: '0.85rem', color: 'var(--pink)', textAlign: 'center', padding: '8px 0' }}>
+                📸 放開以上傳服裝
+              </p>
+            ) : (
+              <>
+                <input type="file" accept="image/*"
+                  ref={outfitInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleOutfitUpload} />
+                <button onClick={() => outfitInputRef.current?.click()}
+                  style={{
+                    padding: '6px 14px', fontSize: '0.8rem',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px dashed var(--border)',
+                    background: 'transparent', color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                  }}>
+                  + 上傳服裝照片
+                </button>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 8 }}>
+                  或拖曳圖片到此
+                </span>
+              </>
+            )}
+            {outfit && !outfit.desc && (
+              <p style={{ fontSize: '0.7rem', color: '#ff6b6b', marginTop: 6 }}>
+                ⚠️ 請填寫服裝描述，AI 才知道如何搭配
+              </p>
+            )}
+          </div>
+
           {/* accessories upload (max 3, auto-labeled pic1-pic3, per-item required desc) */}
           <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
             style={{
-              marginBottom: 12, padding: '10px 12px',
+              flex: '1 1 280px', padding: '10px 12px',
               borderRadius: 'var(--radius-sm)',
               background: dragOver ? 'rgba(232,67,147,0.15)' : 'rgba(232,67,147,0.05)',
               border: dragOver ? '2px dashed var(--pink)' : '1px solid rgba(232,67,147,0.15)',
@@ -729,6 +872,7 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
             </span>
             </>)}
           </div>
+          </div>{/* end .outfit-acc-row */}
 
           {proMode ? (
             <div style={{ marginBottom: 8, padding: '8px 0' }}>
@@ -747,17 +891,6 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
             </div>
           ) : (
             <>
-              <div className="scene-grid" style={{ marginBottom: 12 }}>
-                {SCENES.map(scene => (
-                  <button key={scene.id}
-                    className={`scene-btn ${selectedScene === scene.id ? 'selected' : ''}`}
-                    style={{ padding: '10px 8px', fontSize: '0.8rem' }}
-                    onClick={() => { setSelectedScene(scene.id); setCustomPrompt(''); setError('') }}>
-                    <span style={{ fontSize: '1.4rem', display: 'block', marginBottom: 4 }}>{scene.icon}</span>
-                    {scene.label}
-                  </button>
-                ))}
-              </div>
               <textarea className="chat-input" rows={6} value={customPrompt}
                 onChange={e => { setCustomPrompt(e.target.value); setSelectedScene(null); setError('') }}
                 placeholder="或自訂情境描述，例如：在雪山頂上看日出..."
