@@ -66,9 +66,8 @@ export default function Chat({ character, onChangeCharacter }) {
   const [genProgress, setGenProgress] = useState(0)
   const [proMode, setProMode] = useState(false)
 
-  /* accessories for multi-image composition */
+  /* accessories for multi-image composition (max 3, each with label pic1-pic3 + required desc) */
   const [accessories, setAccessories] = useState([])
-  const [wearDesc, setWearDesc] = useState('')
   const fileInputRef = useRef(null)
 
   const [dragOver, setDragOver] = useState(false)
@@ -116,14 +115,19 @@ export default function Chat({ character, onChangeCharacter }) {
   }
 
   const processFiles = (files) => {
-    Array.from(files).forEach(file => {
-      if (!file.type.startsWith('image/')) return
+    const filesArr = Array.from(files).filter(f => f.type.startsWith('image/'))
+    const currentLen = accessories.length
+    const canAdd = Math.max(0, 3 - currentLen)
+    if (canAdd <= 0) return
+    filesArr.slice(0, canAdd).forEach((file, i) => {
       const reader = new FileReader()
       reader.onload = (ev) => {
         setAccessories(prev => [...prev, {
           id: uid(),
           dataUrl: ev.target.result,
           name: file.name,
+          label: `pic${prev.length + 1}`,
+          desc: '',
         }])
       }
       reader.readAsDataURL(file)
@@ -152,7 +156,6 @@ export default function Chat({ character, onChangeCharacter }) {
 
   const removeAccessory = (id) => {
     setAccessories(prev => prev.filter(a => a.id !== id))
-    if (accessories.length <= 1) setWearDesc('')
   }
 
   if (!ready) return null
@@ -167,27 +170,37 @@ export default function Chat({ character, onChangeCharacter }) {
 
  你現在是使用者的「專屬拍攝助理」！你是專業級攝影指導，為使用者規劃並拍攝 ${character.name} 的照片。
 
- 🔑 核心原則：**完全忠於使用者的拍攝要求**。使用者說怎麼拍就怎麼拍，你的建議只是選項，最終以使用者指定的為主。
+  🔑 核心原則：**完全忠於使用者的拍攝要求**。使用者說怎麼拍就怎麼拍，你的建議只是選項，最終以使用者指定的為主。
 
- 你的任務是引導使用者說出想要的畫面，並提供專業建議。遵循以下流程：
+  你的任務是引導使用者說出想要的畫面，並提供專業建議。遵循以下流程：
 
- 步驟一：先讓使用者描述想拍什麼畫面。
- 步驟二：逐一確認細節（每次問 1-2 項），並**提供選項讓使用者選擇**：
-  - 場景：哪裡？室內還是戶外？例如「海邊夕陽很浪漫，或者咖啡廳文青風也不錯？」
-  - 姿勢：提供具體選項。例如「${character.name}可以回頭微笑、撩頭髮、喝飲料、倚靠欄杆、低頭滑手機～你喜歡哪種？」
-  - 風格：寫實自然、夢幻、電影感、可愛還是性感？
-  - 光源：自然光、夕陽、霓虹、燭光？
-  - 構圖：特寫、半身、全身、男友視角？
-  - 品質要求：高畫質、精細細節？
-  - 服裝：根據場景建議適合的穿著
- 步驟三：收集所有必要元素後，**務必嚴格按照以下格式輸出**（包含 [PROMPT] 和 [/PROMPT] 標籤）：
+  步驟一：先讓使用者描述想拍什麼畫面。
+  步驟二：逐一確認細節（每次問 1-2 項），並**提供選項讓使用者選擇**：
+   - 場景：哪裡？室內還是戶外？例如「海邊夕陽很浪漫，或者咖啡廳文青風也不錯？」
+   - 姿勢：提供具體選項。例如「${character.name}可以回頭微笑、撩頭髮、喝飲料、倚靠欄杆、低頭滑手機～你喜歡哪種？」
+   - 風格：寫實自然、夢幻、電影感、可愛還是性感？
+   - 光源：自然光、夕陽、霓虹、燭光？
+   - 構圖：特寫、半身、全身、男友視角？
+   - 品質要求：高畫質、精細細節？
+   - 服裝：根據場景建議適合的穿著
+  步驟三：收集所有必要元素後，**務必嚴格按照以下格式輸出**（包含 [PROMPT] 和 [/PROMPT] 標籤）：
 
- [PROMPT]以 ${character.name} 為主角的詳細照片提示，包含主體動作、場景氛圍、風格、光源、構圖、品質、光影和細節描述[/PROMPT]
+  [PROMPT]以 ${character.name} 為主角的詳細照片提示，包含主體動作、場景氛圍、風格、光源、構圖、品質、光影和細節描述[/PROMPT]
 
- ⚠️ 重要：最終輸出**必須**包含 [PROMPT]...[/PROMPT] 標籤，否則無法生成照片。標籤內是你要生成的完整照片描述，不要有任何其它文字在標籤內。
+  ⚠️ 重要：最終輸出**必須**包含 [PROMPT]...[/PROMPT] 標籤，否則無法生成照片。標籤內是你要生成的完整照片描述，不要有任何其它文字在標籤內。
 
- 整個對話使用中文。一次問 1-2 個問題就好，讓對話自然流暢。`
-    return base ? `${base}${selfRule}${proExtra}` : `${proExtra}${selfRule}`
+  整個對話使用中文。一次問 1-2 個問題就好，讓對話自然流暢。
+`
+    const accSection = accessories.filter(a => a.desc).length > 0
+      ? '\n📦 使用者已上傳以下穿戴物品：\n'
+        + accessories.filter(a => a.desc).map(a => `  - ${a.label}：${a.desc}`).join('\n')
+        + '\n\n使用這些物品時請遵循以下流程：\n'
+        + '1. 先詢問使用者是否要使用每個物品\n'
+        + '2. 問清楚穿戴方式（例如帽子正戴還是斜戴、項鍊露在外面還是衣服裡面）\n'
+        + '3. 使用者決定後，把最終搭配寫入 [PROMPT] 描述中\n'
+        + '4. 如果使用者說不用某個物品，就不要在 [PROMPT] 中提到它\n'
+      : '\n📦 使用者目前沒有上傳穿戴物品。如果需要，建議先請使用者上傳道具再開始拍攝。\n'
+    return base ? `${base}${selfRule}${proExtra}${accSection}` : `${proExtra}${accSection}${selfRule}`
   }
 
   const sendMessage = async () => {
@@ -386,7 +399,7 @@ export default function Chat({ character, onChangeCharacter }) {
 
     /* if user uploaded accessories, force AI to keep them in the scene */
     const wearItems = accessories.length > 0
-      ? `（使用者指定的穿戴物品：${wearDesc || accessories.map(a => a.name.replace(/\.[^.]+$/, '')).join('、')}）務必保持這些物品在角色身上，不要移除或改變外觀`
+      ? `（使用者指定的穿戴物品：${accessories.filter(a => a.desc).map(a => `${a.label} = ${a.desc}`).join('；')}）務必保持這些物品在角色身上，不要移除或改變外觀。`
       : ''
     const clothingRule = hasRef || accessories.length > 0
       ? `1. 🧥 服裝：保持服裝不變，${wearItems}除非使用者明確要求換衣服。`
@@ -448,10 +461,8 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
       /* build wear description from uploaded accessories */
       let wearClause = ''
       if (accessories.length > 0) {
-        const names = accessories.map(a => a.name.replace(/\.[^.]+$/, '')).join('、')
-        wearClause = wearDesc
-          ? `，穿著/配戴：${wearDesc}`
-          : `，穿著/配戴：${names}`
+        const parts = accessories.filter(a => a.desc).map(a => `${a.label}（${a.desc}）`).join('、')
+        wearClause = parts ? `，穿著/配戴：${parts}` : ''
       }
 
       const basePrompt = `${refClause}${refClause ? '，' : ''}${bodyDesc}${wearClause}，${promptText}`.replace(/^，/, '')
@@ -485,7 +496,7 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
       const record = { id: `img_${Date.now()}`, imageUrl: dataUrl, scene: selectedScene, prompt: promptText, timestamp: Date.now() }
       await put('images', record)
 
-      setImgMode(false); setSelectedScene(null); setCustomPrompt(''); setAccessories([]); setWearDesc('')
+      setImgMode(false); setSelectedScene(null); setCustomPrompt(''); setAccessories([])
       /* reset only data-URL reference (set via 修改這張圖), preserve external URLs */
       if (character.refImageUrl?.startsWith('data:')) {
         onChangeCharacter?.({...character, refImageUrl: ''})
@@ -507,10 +518,8 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
 
     let wearClause = ''
     if (accessories.length > 0) {
-      const names = accessories.map(a => a.name.replace(/\.[^.]+$/, '')).join('、')
-      wearClause = wearDesc
-        ? `，穿著/配戴：${wearDesc}`
-        : `，穿著/配戴：${names}`
+      const parts = accessories.filter(a => a.desc).map(a => `${a.label}（${a.desc}）`).join('、')
+      wearClause = parts ? `，穿著/配戴：${parts}` : ''
     }
 
     const finalPrompt = `${refClause}${refClause ? '，' : ''}${bodyDesc}${wearClause}，${expandedPrompt}。高畫質、精細細節、寫實風格`.replace(/^，/, '')
@@ -536,7 +545,7 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
       const record = { id: `img_${Date.now()}`, imageUrl: dataUrl, scene: 'pro', prompt: expandedPrompt, timestamp: Date.now() }
       await put('images', record)
 
-      setImgMode(false); setProMode(false); setAccessories([]); setWearDesc('')
+      setImgMode(false); setProMode(false); setAccessories([])
       /* reset only data-URL reference (set via 修改這張圖), preserve external URLs */
       if (character.refImageUrl?.startsWith('data:')) {
         onChangeCharacter?.({...character, refImageUrl: ''})
@@ -552,7 +561,7 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
     if (genLoading) cancelGen()
     setImgMode(!imgMode)
     setError('')
-    if (!imgMode) { setSelectedScene(null); setCustomPrompt(''); setAccessories([]); setWearDesc('') }
+    if (!imgMode) { setSelectedScene(null); setCustomPrompt(''); setAccessories([]) }
   }
 
   return (
@@ -638,7 +647,7 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
             </button>
           </div>
 
-          {/* accessories upload (shown in both modes) */}
+          {/* accessories upload (max 3, auto-labeled pic1-pic3, per-item required desc) */}
           <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
             style={{
               marginBottom: 12, padding: '10px 12px',
@@ -648,33 +657,56 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
               transition: 'all 0.2s',
             }}>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
-              📎 上傳穿戴物品（單次使用）
+              📎 上傳穿戴物品（最多 3 張）{accessories.length > 0 && <span style={{ color: 'var(--pink)' }}>({accessories.length}/3)</span>}
             </p>
+
+            {/* per-item display: thumbnail + label + required desc input */}
             {accessories.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
                 {accessories.map(acc => (
-                  <div key={acc.id} style={{
-                    position: 'relative', width: 56, height: 56,
-                    borderRadius: 'var(--radius-sm)', overflow: 'hidden',
-                    border: '1px solid var(--border)',
-                  }}>
-                    <img src={acc.dataUrl} alt={acc.name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <button onClick={() => removeAccessory(acc.id)}
+                  <div key={acc.id}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.1)' }}>
+                    <div style={{ position: 'relative', width: 48, height: 48, borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
+                      <span style={{
+                        position: 'absolute', top: 1, left: 1, zIndex: 1,
+                        fontSize: '0.55rem', background: 'var(--pink)', color: '#fff',
+                        padding: '0 4px', borderRadius: 3, lineHeight: '14px',
+                      }}>{acc.label}</span>
+                      <img src={acc.dataUrl} alt={acc.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button onClick={() => removeAccessory(acc.id)}
+                        style={{
+                          position: 'absolute', top: 1, right: 1,
+                          width: 16, height: 16, borderRadius: '50%',
+                          background: 'rgba(0,0,0,0.6)', color: '#fff',
+                          border: 'none', cursor: 'pointer',
+                          fontSize: '0.5rem', lineHeight: '16px', padding: 0,
+                        }}>✕</button>
+                    </div>
+                    <input type="text" value={acc.desc}
+                      onChange={e => {
+                        const val = e.target.value
+                        setAccessories(prev => prev.map(a => a.id === acc.id ? { ...a, desc: val } : a))
+                      }}
+                      placeholder={`描述 ${acc.label}，例如：紅色貝雷帽（頭上戴）`}
                       style={{
-                        position: 'absolute', top: 1, right: 1,
-                        width: 18, height: 18, borderRadius: '50%',
-                        background: 'rgba(0,0,0,0.6)', color: '#fff',
-                        border: 'none', cursor: 'pointer',
-                        fontSize: '0.6rem', lineHeight: '18px', padding: 0,
-                      }}>✕</button>
+                        flex: 1, padding: '6px 10px', fontSize: '0.75rem',
+                        borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+                        background: 'var(--bg-input)', color: 'var(--text)',
+                        outline: 'none', boxSizing: 'border-box',
+                      }} />
                   </div>
                 ))}
               </div>
             )}
+
+            {/* drag hint or max reached */}
             {dragOver ? (
               <p style={{ fontSize: '0.85rem', color: 'var(--pink)', textAlign: 'center', padding: '8px 0' }}>
                 📸 放開以上傳圖片
+              </p>
+            ) : accessories.length >= 3 ? (
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '4px 0' }}>
+                已達上傳上限 (3/3)
               </p>
             ) : (
               <>
@@ -696,18 +728,6 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
               或拖曳圖片到此
             </span>
             </>)}
-            {accessories.length > 0 && (
-              <input type="text" value={wearDesc}
-                onChange={e => setWearDesc(e.target.value)}
-                placeholder="描述穿戴方式，例如：頭上戴紅色貝雷帽、脖子上掛愛心項鍊"
-                style={{
-                  width: '100%', marginTop: 8, padding: '8px 12px',
-                  fontSize: '0.8rem', borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-input)', color: 'var(--text)',
-                  outline: 'none', boxSizing: 'border-box',
-                }} />
-            )}
           </div>
 
           {proMode ? (
@@ -719,6 +739,11 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
                 在對話中告訴小艾你想拍什麼照片（例如：「我想在海邊拍一張照片」），
                 她會一步步引導你完成專業級構圖，最後自動生成大師級作品！
               </p>
+              {accessories.length > 0 && accessories.some(a => !a.desc) && (
+                <p style={{ fontSize: '0.75rem', color: '#ff6b6b', marginTop: 6 }}>
+                  ⚠️ 請為每個上傳的物品填寫描述，AI 才知道如何搭配
+                </p>
+              )}
             </div>
           ) : (
             <>
@@ -737,6 +762,11 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
                 onChange={e => { setCustomPrompt(e.target.value); setSelectedScene(null); setError('') }}
                 placeholder="或自訂情境描述，例如：在雪山頂上看日出..."
                 style={{ width: '100%', marginBottom: 8 }} disabled={genLoading} />
+              {accessories.length > 0 && accessories.some(a => !a.desc) && (
+                <p style={{ fontSize: '0.75rem', color: '#ff6b6b', marginBottom: 6 }}>
+                  ⚠️ 請為每個上傳的物品填寫描述
+                </p>
+              )}
               {genLoading ? (
                 <div>
                   <div className="gen-progress-wrap">
@@ -756,7 +786,7 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
                   </button>
                 </div>
               ) : (
-                <button className="chat-send" style={{ width: '100%' }} onClick={generateImage} disabled={!selectedScene && !customPrompt.trim()}>
+                <button className="chat-send" style={{ width: '100%' }} onClick={generateImage} disabled={(accessories.some(a => !a.desc)) || (!selectedScene && !customPrompt.trim())}>
                   🎨 生成 {character.name} 的圖片
                 </button>
               )}
