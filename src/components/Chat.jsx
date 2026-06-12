@@ -71,6 +71,8 @@ export default function Chat({ character, onChangeCharacter }) {
   const [wearDesc, setWearDesc] = useState('')
   const fileInputRef = useRef(null)
 
+  const [dragOver, setDragOver] = useState(false)
+
   const abortRef = useRef(null)
   const persistTimer = useRef(null)
   const cancelGen = () => {
@@ -113,9 +115,9 @@ export default function Chat({ character, onChangeCharacter }) {
     setMessages(prev => prev.filter(m => m.id !== id))
   }
 
-  const handleAccessoryUpload = (e) => {
-    const files = Array.from(e.target.files || [])
-    files.forEach(file => {
+  const processFiles = (files) => {
+    Array.from(files).forEach(file => {
+      if (!file.type.startsWith('image/')) return
       const reader = new FileReader()
       reader.onload = (ev) => {
         setAccessories(prev => [...prev, {
@@ -126,7 +128,26 @@ export default function Chat({ character, onChangeCharacter }) {
       }
       reader.readAsDataURL(file)
     })
+  }
+
+  const handleAccessoryUpload = (e) => {
+    processFiles(e.target.files || [])
     e.target.value = ''
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setDragOver(false)
+    processFiles(e.dataTransfer.files || [])
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setDragOver(true)
+  }
+
+  const handleDragLeave = () => {
+    setDragOver(false)
   }
 
   const removeAccessory = (id) => {
@@ -581,11 +602,14 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
           </div>
 
           {/* accessories upload (shown in both modes) */}
-          <div style={{
-            marginBottom: 12, padding: '10px 12px',
-            borderRadius: 'var(--radius-sm)',
-            background: 'rgba(232,67,147,0.05)', border: '1px solid rgba(232,67,147,0.15)',
-          }}>
+          <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+            style={{
+              marginBottom: 12, padding: '10px 12px',
+              borderRadius: 'var(--radius-sm)',
+              background: dragOver ? 'rgba(232,67,147,0.15)' : 'rgba(232,67,147,0.05)',
+              border: dragOver ? '2px dashed var(--pink)' : '1px solid rgba(232,67,147,0.15)',
+              transition: 'all 0.2s',
+            }}>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
               📎 上傳穿戴物品（單次使用）
             </p>
@@ -611,6 +635,12 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
                 ))}
               </div>
             )}
+            {dragOver ? (
+              <p style={{ fontSize: '0.85rem', color: 'var(--pink)', textAlign: 'center', padding: '8px 0' }}>
+                📸 放開以上傳圖片
+              </p>
+            ) : (
+              <>
             <input type="file" accept="image/*" multiple
               ref={fileInputRef}
               style={{ display: 'none' }}
@@ -625,6 +655,10 @@ Important: If the user instruction says "keep X unchanged" or "same clothing", a
               }}>
               + 選擇圖片
             </button>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 8 }}>
+              或拖曳圖片到此
+            </span>
+            </>)}
             {accessories.length > 0 && (
               <input type="text" value={wearDesc}
                 onChange={e => setWearDesc(e.target.value)}
