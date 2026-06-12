@@ -187,6 +187,7 @@ export default function Chat({ character, onChangeCharacter }) {
           ...newMessages.map(m => ({ role: m.role, content: m.content })),
         ],
         temperature: 0.8, max_tokens: 1024,
+        chat_template_kwargs: { enable_thinking: true },
       }
       const res = await fetch(`${AGNES_BASE}/chat/completions`, {
         method: 'POST',
