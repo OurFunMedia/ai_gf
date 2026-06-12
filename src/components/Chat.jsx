@@ -434,6 +434,8 @@ export default function Chat({ character, onChangeCharacter }) {
 
 The subject is always "${character.name}" (the character in the photo).
 
+IMPORTANT — If the user input is vague (e.g. "random", "隨機", or ≤3 words), you MUST invent a completely unique, specific, vivid scene/location/situation yourself. Do NOT default to common scenes like beach, coffee shop, or park. Be creative and unpredictable — choose from ALL possible real-world settings (e.g. industrial warehouse rave, rooftop apiary at sunset, abandoned train station overgrown with vines, traditional teahouse during snowfall, aquarium tunnel at night, hot air balloon festival, vineyard in autumn, underground jazz bar, lunar new year temple fair, roller skating rink, etc.). Every generation must describe a DIFFERENT scene.
+
 Based on the character's body features and the scene, generate a prompt that includes ALL of the following elements (each time with different choices):
 
 ${clothingRule}
@@ -470,47 +472,9 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
     return expanded || base
   }
 
-  /* random scene concepts for vague/short prompts */
-  const RANDOM_SCENES = [
-    '在沙灘上赤腳漫步看夕陽',
-    '在復古咖啡廳靠窗位喝拿鐵',
-    '在獨立書店翻書',
-    '在春天櫻花樹下野餐',
-    '在雪山山頂看日出',
-    '在深夜便利商店門口喝熱奶茶',
-    '在美術館大廳欣賞畫作',
-    '在河堤騎腳踏車吹風',
-    '在花店門口整理花束',
-    '在天台曬衣服俯瞰城市',
-    '在懷舊唱片行聽黑膠',
-    '在雨中撐傘走過小巷',
-    '在寵物咖啡廳抱貓咪',
-    '在海邊堤防坐著看海',
-    '在夜市吃小吃逛攤位',
-    '在登山步道中途休息',
-    '在摩天輪上俯瞰夜景',
-    '在溫泉旅館戶外泡湯',
-    '在老宅咖啡廳閣樓寫明信片',
-    '在電影院售票口前選片',
-    '在神社參道散步',
-    '在頂樓泳池畔躺椅看書',
-    '在傳統市場挑水果',
-    '在聖誕市集喝熱紅酒',
-    '在植物園溫室賞花',
-    '在復古遊戲機台前玩遊戲',
-    '在圖書館靠窗座位看書',
-    '在日落遊艇上喝香檳',
-    '在竹林小徑散步',
-    '在古董市集挖寶',
-  ]
-
   const generateImage = async () => {
-    const rawPrompt = customPrompt.trim()
-    if (!rawPrompt) { setError('請選擇一個情境或輸入描述'); return }
-    /* short/vague prompt → inject a concrete random scene */
-    const promptText = rawPrompt.length <= 4
-      ? RANDOM_SCENES[Math.floor(Math.random() * RANDOM_SCENES.length)]
-      : rawPrompt
+    const promptText = customPrompt.trim()
+    if (!promptText) { setError('請選擇一個情境或輸入描述'); return }
 
     abortRef.current = new AbortController()
     const signal = abortRef.current.signal
@@ -893,7 +857,7 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
             <>
               <textarea className="chat-input" rows={6} value={customPrompt}
                 onChange={e => { setCustomPrompt(e.target.value); setSelectedScene(null); setError('') }}
-                placeholder="或自訂情境描述，例如：在雪山頂上看日出..."
+                placeholder="輸入情境描述（如：雪山頂看日出），或輸入「隨機 / random」讓 AI 即興抽卡"
                 style={{ width: '100%', marginBottom: 8 }} disabled={genLoading} />
               {accessories.length > 0 && accessories.some(a => !a.desc) && (
                 <p style={{ fontSize: '0.75rem', color: '#ff6b6b', marginBottom: 6 }}>
