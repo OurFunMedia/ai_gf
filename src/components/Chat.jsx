@@ -226,6 +226,13 @@ export default function Chat({ character, onChangeCharacter }) {
     const userMsg = input.trim()
     setInput('')
     setError('')
+
+    /* scene mode: treat chat message as scene prompt, generate image directly */
+    if (imgMode && !proMode) {
+      await generateImage(userMsg)
+      return
+    }
+
     const newMessages = [...messages, { id: uid(), role: 'user', content: userMsg }]
     setMessages(newMessages)
     setLoading(true)
@@ -368,7 +375,7 @@ export default function Chat({ character, onChangeCharacter }) {
   }
 
   /* AI expand prompt with randomness — English output for better Agnes image quality */
-  const expandPrompt = async (base, signal, hasRef = false) => {
+  const expandPrompt = async (userPrompt, signal, hasRef = false) => {
     /* random season & time of day — not tied to real time */
     const seasons = ['early spring','spring','late spring','early summer','summer','midsummer','late summer','early autumn','autumn','late autumn','early winter','winter']
     const season = seasons[Math.floor(Math.random() * seasons.length)]
@@ -417,6 +424,12 @@ export default function Chat({ character, onChangeCharacter }) {
     ]
     const cameraAngle = cameraAngles[Math.floor(Math.random() * cameraAngles.length)]
 
+    /* build body context from character settings */
+    const bodyDescText = buildBodyDesc(character)
+    const refNote = hasRef
+      ? `\n角色外貌參照：臉部、髮型、體型${outfit?.desc ? '' : '、服裝'}保持與參考圖完全一致。`
+      : ''
+
     /* if user uploaded accessories, force AI to keep them in the scene */
     const wearItems = accessories.length > 0
       ? `（使用者指定的穿戴物品：${accessories.filter(a => a.desc).map(a => `${a.label} = ${a.desc}`).join('；')}）務必保持這些物品在角色身上，不要移除或改變外觀。`
@@ -430,13 +443,17 @@ export default function Chat({ character, onChangeCharacter }) {
       clothingRule = '1. 🧥 服裝：根據場景場合選擇合適的服裝。例如洋裝、T恤牛仔褲、襯衫短裙、連身褲、針織衫、運動服等。'
     }
 
+    const charContext = bodyDescText || refNote
+      ? `\n角色資訊：${bodyDescText}${refNote}`
+      : ''
+
     const sysMsg = `You are a professional photographer and cinematographer. Your task is to expand a short scene description into a rich, detailed English image prompt for a photo-realistic generation model.
 
-The subject is always "${character.name}" (the character in the photo).
+The subject is always "${character.name}" (the character in the photo).${charContext}
 
-IMPORTANT — If the user input is vague (e.g. "random", "隨機", or ≤3 words), you MUST invent a completely unique, specific, vivid scene/location/situation yourself. Do NOT default to common scenes like beach, coffee shop, or park. Be creative and unpredictable — choose from ALL possible real-world settings (e.g. industrial warehouse rave, rooftop apiary at sunset, abandoned train station overgrown with vines, traditional teahouse during snowfall, aquarium tunnel at night, hot air balloon festival, vineyard in autumn, underground jazz bar, lunar new year temple fair, roller skating rink, etc.). Every generation must describe a DIFFERENT scene.
+IMPORTANT — The "user" message below contains ONLY the user's scene description. If that description is vague (e.g. "random", "隨機", or ≤3 words), you MUST invent a completely unique, specific, vivid scene/location/situation yourself. Do NOT default to common scenes like beach, coffee shop, or park. Be creative and unpredictable — choose from ALL possible real-world settings (e.g. industrial warehouse rave, rooftop apiary at sunset, abandoned train station overgrown with vines, traditional teahouse during snowfall, aquarium tunnel at night, hot air balloon festival, vineyard in autumn, underground jazz bar, lunar new year temple fair, roller skating rink, etc.). Every generation must describe a DIFFERENT scene.
 
-Based on the character's body features and the scene, generate a prompt that includes ALL of the following elements (each time with different choices):
+Based on the character's body features above and the scene, generate a prompt that includes ALL of the following elements (each time with different choices):
 
 ${clothingRule}
 2. 🧍 Pose: Choose a unique pose different from last time. Examples: looking back with a smile, playing with hair,低頭 scrolling phone, holding a drink, leaning against a wall, adjusting collar, tying shoelaces, stretching, looking out a window, walking naturally, sitting on a bench, browsing bookshelf, holding a coffee cup, laughing naturally.
@@ -459,21 +476,21 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
         model: AGNES_CHAT_MODEL,
         messages: [
           { role: 'system', content: sysMsg },
-          { role: 'user', content: base },
+          { role: 'user', content: userPrompt },
         ],
         temperature: 1.0, max_tokens: 1024,
         chat_template_kwargs: { enable_thinking: true },
       }),
       signal,
     })
-    if (!res.ok) return base
+    if (!res.ok) return userPrompt
     const data = await res.json()
     const expanded = data.choices?.[0]?.message?.content?.trim()
-    return expanded || base
+    return expanded || userPrompt
   }
 
-  const generateImage = async () => {
-    const promptText = customPrompt.trim()
+  const generateImage = async (overridePrompt) => {
+    const promptText = (overridePrompt || customPrompt).trim()
     if (!promptText) { setError('請選擇一個情境或輸入描述'); return }
 
     abortRef.current = new AbortController()
@@ -481,24 +498,11 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
     setGenLoading(true); setGenStatus('✏️'); setGenProgress(5); setError('')
 
     try {
-      const bodyDesc = buildBodyDesc(character)
       const hasRef = !!character.refImageUrl
-      const refClause = hasRef
-        ? `角色外貌保持不變（臉部、髮型、體型${outfit?.desc ? '' : '、服裝'}完全與參考圖一致）`
-        : ''
-
-      /* build wear description from uploaded accessories */
-      let wearClause = ''
-      if (accessories.length > 0) {
-        const parts = accessories.filter(a => a.desc).map(a => `${a.label}（${a.desc}）`).join('、')
-        wearClause = parts ? `，穿著/配戴：${parts}` : ''
-      }
-
-      const basePrompt = `${refClause}${refClause ? '，' : ''}${bodyDesc}${wearClause}，${promptText}`.replace(/^，/, '')
 
       /* step 1: AI expand with randomness */
       setGenStatus('✏️'); setGenProgress(20)
-      const expandedPrompt = await expandPrompt(basePrompt, signal, hasRef || accessories.length > 0)
+      const expandedPrompt = await expandPrompt(promptText, signal, hasRef || accessories.length > 0)
       if (signal.aborted) return
       setGenProgress(45)
 
@@ -838,56 +842,55 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
           </div>
           </div>{/* end .outfit-acc-row */}
 
-          {proMode ? (
-            <div style={{ marginBottom: 8, padding: '8px 0' }}>
-              <p style={{ fontSize: '0.9rem', marginBottom: 8, lineHeight: 1.5 }}>
-                🌟 大師級男友視覺攝影模式
-              </p>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                在對話中告訴小艾你想拍什麼照片（例如：「我想在海邊拍一張照片」），
-                她會一步步引導你完成專業級構圖，最後自動生成大師級作品！
-              </p>
-              {accessories.length > 0 && accessories.some(a => !a.desc) && (
-                <p style={{ fontSize: '0.75rem', color: '#ff6b6b', marginTop: 6 }}>
-                  ⚠️ 請為每個上傳的物品填寫描述，AI 才知道如何搭配
+          {/* Mode description — both modes now use the same chat-driven flow */}
+          <div style={{ marginBottom: 8, padding: '8px 0' }}>
+            {proMode ? (
+              <>
+                <p style={{ fontSize: '0.9rem', marginBottom: 8, lineHeight: 1.5 }}>
+                  🌟 大師級男友視覺攝影模式
                 </p>
-              )}
-            </div>
-          ) : (
-            <>
-              <textarea className="chat-input" rows={6} value={customPrompt}
-                onChange={e => { setCustomPrompt(e.target.value); setSelectedScene(null); setError('') }}
-                placeholder="輸入情境描述（如：雪山頂看日出），或輸入「隨機 / random」讓 AI 即興抽卡"
-                style={{ width: '100%', marginBottom: 8 }} disabled={genLoading} />
-              {accessories.length > 0 && accessories.some(a => !a.desc) && (
-                <p style={{ fontSize: '0.75rem', color: '#ff6b6b', marginBottom: 6 }}>
-                  ⚠️ 請為每個上傳的物品填寫描述
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  在對話中告訴小艾你想拍什麼照片（例如：「我想在海邊拍一張照片」），
+                  她會一步步引導你完成專業級構圖，最後自動生成大師級作品！
                 </p>
-              )}
-              {genLoading ? (
-                <div>
-                  <div className="gen-progress-wrap">
-                    <div className="gen-progress-bar">
-                      <div className="gen-progress-fill" style={{ width: genProgress + '%' }} />
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', flex: 1 }}>
-                      {genStatus} {genStatus === '✏️' ? 'AI 擴寫提示中...' : genStatus === '🎨' ? '生成圖片中...' : '處理中...'}
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{genProgress}%</span>
-                  </div>
-                  <button className="chat-send" onClick={cancelGen}
-                    style={{ width: '100%', background: 'transparent', border: '1px solid #ff6b6b', color: '#ff6b6b' }}>
-                    ✕ 取消
-                  </button>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: '0.9rem', marginBottom: 8, lineHeight: 1.5 }}>
+                  📋 情境場景模式
+                </p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  在對話中直接輸入場景描述（例如：「雪山頂看日出」），
+                  或輸入「隨機 / random」讓 AI 即興抽卡！
+                </p>
+              </>
+            )}
+            {accessories.length > 0 && accessories.some(a => !a.desc) && (
+              <p style={{ fontSize: '0.75rem', color: '#ff6b6b', marginTop: 6 }}>
+                ⚠️ 請為每個上傳的物品填寫描述，AI 才知道如何搭配
+              </p>
+            )}
+          </div>
+
+          {/* Shared progress bar (any mode) */}
+          {genLoading && (
+            <div style={{ padding: '8px 0' }}>
+              <div className="gen-progress-wrap">
+                <div className="gen-progress-bar">
+                  <div className="gen-progress-fill" style={{ width: genProgress + '%' }} />
                 </div>
-              ) : (
-                <button className="chat-send" style={{ width: '100%' }} onClick={generateImage} disabled={(accessories.some(a => !a.desc)) || (!selectedScene && !customPrompt.trim())}>
-                  🎨 生成 {character.name} 的圖片
-                </button>
-              )}
-            </>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', flex: 1 }}>
+                  {genStatus} {genStatus === '✏️' ? 'AI 擴寫提示中...' : genStatus === '🎨' ? '生成圖片中...' : '處理中...'}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{genProgress}%</span>
+              </div>
+              <button className="chat-send" onClick={cancelGen}
+                style={{ width: '100%', background: 'transparent', border: '1px solid #ff6b6b', color: '#ff6b6b' }}>
+                ✕ 取消
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -899,7 +902,7 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
         </button>
         <textarea className="chat-input" rows={1} value={input}
           onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
-          placeholder={proMode ? `描述你想拍的畫面...` : `跟${character.name}說說話...`} disabled={loading || genLoading} />
+          placeholder={imgMode ? (proMode ? `描述你想拍的畫面...` : `輸入場景描述，如：雪山頂看日出`) : `跟${character.name}說說話...`} disabled={loading || genLoading} />
         <button className="chat-send" onClick={sendMessage} disabled={loading || !input.trim()}>送出</button>
       </div>
 
