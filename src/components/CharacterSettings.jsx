@@ -15,6 +15,13 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
   const [hipShape, setHipShape] = useState(character.hipShape ?? '翹')
   const [style, setStyle] = useState(character.style ?? '可愛')
 
+  const [toastVisible, setToastVisible] = useState(false)
+
+  const showToast = () => {
+    setToastVisible(true)
+    setTimeout(() => setToastVisible(false), 2000)
+  }
+
   const save = () => {
     onChange({
       name: localName,
@@ -24,6 +31,7 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
       height, figure, bust, waist, hipWidth, hipShape, style,
       showPrompt: character.showPrompt,
     })
+    showToast()
   }
 
   const SelectRow = ({ label, value, onChange, options }) => (
@@ -137,6 +145,7 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
       </div>
 
       <button className="gen-btn" style={{ marginTop: 12 }} onClick={save}>儲存設定</button>
+      {toastVisible && <div className="toast">✅ 設定已儲存</div>}
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '32px 0 16px' }} />
       <h3 style={{ fontSize: '1rem', color: '#ff6b6b', marginBottom: 12 }}>⚠️ 危險區域</h3>

@@ -20,6 +20,7 @@ export default function ImageGen({ character }) {
   useEffect(() => { loadPhotos() }, [])
 
   const handleDelete = async (id) => {
+    if (!window.confirm('確定刪除這張照片？')) return
     try {
       await del('images', id)
       setPhotos(prev => prev.filter(p => p.id !== id))
@@ -82,7 +83,7 @@ export default function ImageGen({ character }) {
                 <span className="album-prompt">{truncatePrompt(photo.prompt || '')}</span>
               </div>
               <button className="album-del-btn" onClick={(e) => { e.stopPropagation(); handleDelete(photo.id) }}
-                title="刪除照片">✕</button>
+                title="刪除照片">🗑</button>
 
             </div>
           ))}
