@@ -381,6 +381,21 @@ export default function Chat({ character, onChangeCharacter }) {
 
   /* AI expand prompt with randomness — English output for better Agnes image quality */
   const expandPrompt = async (userPrompt, signal, hasRef = false) => {
+    /* client-side scene type pick — guarantees diversity when input is vague */
+    const sceneTypes = [
+      'cozy indoor living space — bedroom, living room, kitchen, balcony, sunroom',
+      'indoor public space — library, coffee shop, museum, bookstore, aquarium, arcade, karaoke room',
+      'urban outdoor — night market, rooftop, subway station, parking garage, laundromat, convenience store',
+      'city street scene — bustling sidewalk, crosswalk, bus stop, taxi stand, street food stall',
+      'transport hub — airport terminal, train station platform, ferry dock, bullet train interior',
+      'indoor recreation — bowling alley, climbing gym, basketball court, recording studio, dance studio',
+      'natural landscape — beach shore, lakeside pier, mountain trail, waterfall, desert road, sunflower field',
+      'cultural venue — temple courtyard, traditional teahouse, open-air theater, lantern festival, night parade',
+      'industrial/utilitarian — warehouse loft, factory rooftop, auto repair shop, construction site lookout',
+      'atmospheric night scene — neon-lit street, observatory dome, rooftop bar, bridge overlook, highway overpass',
+    ]
+    const sceneType = sceneTypes[Math.floor(Math.random() * sceneTypes.length)]
+
     /* random season & time of day — not tied to real time */
     const seasons = ['early spring','spring','late spring','early summer','summer','midsummer','late summer','early autumn','autumn','late autumn','early winter','winter']
     const season = seasons[Math.floor(Math.random() * seasons.length)]
@@ -429,6 +444,18 @@ export default function Chat({ character, onChangeCharacter }) {
     ]
     const cameraAngle = cameraAngles[Math.floor(Math.random() * cameraAngles.length)]
 
+    /* style config — each style influences clothing suggestions, expressions, and color bias */
+    const styleConfig = {
+      '清純': { clothing: '白色碎花洋裝、棉質襯衫配牛仔褲、淺色針織衫、A字裙、帆布鞋', expressions: 'natural shy smile, innocent gaze, gentle blush, pure expression, soft peaceful face' },
+      '性感': { clothing: '貼身洋裝、細肩帶背心配短裙、蕾絲上衣、高衩長裙、皮裙、高跟鞋', expressions: 'seductive gaze over shoulder, confident smirk, sultry expression, mysterious look, alluring eyes' },
+      '可愛': { clothing: '蓬裙、百褶裙、oversize針織衫配短褲、連身吊帶裙、泡泡袖上衣、娃娃鞋', expressions: 'bright cheerful smile, playful wink, cute pout, happy laugh, bunny pose' },
+      '優雅': { clothing: '絲質連身裙、簡約套裝、高腰寬褲配雪紡衫、及膝裙、低跟鞋', expressions: 'graceful smile, composed serene expression, elegant gaze, poised calm face, refined look' },
+      '鄰家': { clothing: 'T恤配牛仔短褲、連帽外套、居家棉質洋裝、吊帶褲、運動鞋', expressions: 'warm friendly smile, relaxed natural expression, casual laugh, caring look, comfortable happy face' },
+    }
+    const cfg = styleConfig[character.style] || styleConfig['可愛']
+    const styleClothHint = cfg.clothing
+    const styleExprs = cfg.expressions
+
     /* build body context from character settings */
     const bodyDescText = buildBodyDesc(character)
     const refNote = hasRef
@@ -445,7 +472,7 @@ export default function Chat({ character, onChangeCharacter }) {
     } else if (hasRef || accessories.length > 0) {
       clothingRule = `1. 🧥 服裝：保持服裝不變，${wearItems}除非使用者明確要求換衣服。`
     } else {
-      clothingRule = '1. 🧥 服裝：根據場景場合選擇合適的服裝。例如洋裝、T恤牛仔褲、襯衫短裙、連身褲、針織衫、運動服等。'
+      clothingRule = `1. 🧥 服裝：根據角色風格選擇合適的服裝。優先選擇：${styleClothHint}。可根據場景場合調整，但須符合整體風格調性。`
     }
 
     const charContext = bodyDescText || refNote
@@ -456,7 +483,7 @@ export default function Chat({ character, onChangeCharacter }) {
 
 The subject is always "${character.name}" (the character in the photo).${charContext}
 
-IMPORTANT — The "user" message below contains ONLY the user's scene description. If that description is vague (e.g. "random", "隨機", or ≤3 words), you MUST invent a completely unique, specific, vivid scene/location/situation yourself from the full spectrum of real-world environments — equally likely to be indoor or outdoor, urban or rural, natural or man-made, mundane or dramatic. Pick randomly across all possibilities without favoring any category. Every generation must describe a DIFFERENT scene.
+If the user's description is vague (e.g. "random", "隨機", or ≤3 words), generate a scene that matches this type: ${sceneType}. Invent a specific, vivid location within that category. Example: if type is "library" then describe exactly which library, what the character is doing there, what objects are nearby. Do NOT default to outdoor street scenes when other categories are requested.
 
 Based on the character's body features above and the scene, generate a prompt that includes ALL of the following elements (each time with different choices):
 
@@ -465,7 +492,7 @@ ${clothingRule}
 3. ☁️ Weather/Atmosphere: ${weather}
 4. 🌅 Time/Lighting: ${timeOfDay}, ${season}. Describe natural light effect accordingly.
 5. 🎨 Color Palette: ${colorPalette}
-6. 😊 Expression/Mood: Choose a natural expression — gentle smile, thoughtful gaze, cheerful laugh, sleepy eyes, curious look, content expression, playful wink, calm serene face.
+6. 😊 Expression/Mood: Choose a ${character.style} style expression — ${styleExprs}.
 7. 📷 Camera: ${cameraAngle}
 8. ✨ Quality: ultra-detailed skin texture, natural skin pores, realistic eye catchlight, natural hair strands, photorealistic, 8K
 
@@ -894,7 +921,7 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
               <div style={{ padding: '8px 0 4px' }}>
                 {proMode ? (
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                    在對話中告訴小艾你想拍什麼照片（例如：「我想在海邊拍一張照片」），
+                    在對話中告訴虛擬伴侶你想拍什麼照片（例如：「我想在海邊拍一張照片」），
                     她會一步步引導你完成專業級構圖，最後自動生成大師級作品！
                   </p>
                 ) : (
