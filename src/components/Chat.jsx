@@ -514,7 +514,7 @@ You MUST include the character's full body description (age, height, figure, bus
 
 IMPORTANT — A reference photo of the character will be provided to the image model. Your prompt MUST explicitly tell the image model what to keep unchanged vs what to change. Begin the prompt with: "KEEP: [face, hairstyle, body, clothing unchanged]. CHANGE: [background/scene completely to the new setting below]." Then describe the scene as usual, including the character's body description. This ensures img2img generates a completely different background while preserving the character's identity.` : ''}
 
-Output ONLY the expanded English prompt. One paragraph. No explanations, no prefixes, no line breaks. Keep character name "${character.name}" in the prompt.
+Output ONLY the expanded English prompt. One paragraph. No explanations, no prefixes, no line breaks.
 
 Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in the user's message — rule 1 takes precedence.`
     const res = await fetch(`${AGNES_BASE}/chat/completions`, {
