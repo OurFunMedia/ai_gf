@@ -866,7 +866,7 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
               </span>
               </>)}
             </div>
-            </div>{/* end .outfit-acc-row */}
+            </div>
             )}
           </div>
 
