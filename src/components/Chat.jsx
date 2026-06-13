@@ -66,6 +66,7 @@ export default function Chat({ character, onChangeCharacter }) {
   const outfitInputRef = useRef(null)
 
   const [dragOver, setDragOver] = useState(false)
+  const [uploadAreaOpen, setUploadAreaOpen] = useState(false)
 
   const abortRef = useRef(null)
   const persistTimer = useRef(null)
@@ -194,7 +195,7 @@ export default function Chat({ character, onChangeCharacter }) {
 
   步驟一：先讓使用者描述想拍什麼畫面。
   步驟二：逐一確認細節（每次問 1-2 項），並**提供選項讓使用者選擇**：
-   - 場景：哪裡？室內還是戶外？例如「海邊夕陽很浪漫，或者咖啡廳文青風也不錯？」
+   - 場景：哪裡？室內還是戶外？例如「海邊夕陽很浪漫，或者咖啡廳文青風也不錯？」每次建議盡量不同類型，不要偏好特定種類
    - 姿勢：提供具體選項。例如「${character.name}可以回頭微笑、撩頭髮、喝飲料、倚靠欄杆、低頭滑手機～你喜歡哪種？」
    - 風格：寫實自然、夢幻、電影感、可愛還是性感？
    - 光源：自然光、夕陽、霓虹、燭光？
@@ -385,7 +386,7 @@ export default function Chat({ character, onChangeCharacter }) {
     const timeOfDay = timesOfDay[Math.floor(Math.random() * timesOfDay.length)]
 
     /* large random pools for variety */
-    const weathers = ['sunny','clear','partly cloudy','overcast','golden haze','misty','foggy','dew-kissed','rain-washed','crisp autumn','warm breeze','soft overcast','dramatic clouds','hazy','bright','fair']
+    const weathers = ['sunny','clear','partly cloudy','overcast','golden haze','misty','foggy','crisp autumn','warm breeze','soft overcast','dramatic clouds','hazy','bright','fair','dry heat','urban haze','starry clear','moonlit']
     const weather = weathers[Math.floor(Math.random() * weathers.length)]
 
     const styles = [
@@ -408,7 +409,7 @@ export default function Chat({ character, onChangeCharacter }) {
       'golden amber and warm neutrals',
       'muted vintage tones, faded memory palette',
       'soft pink and warm ivory',
-      'natural greens and warm sunlight',
+      'deep indigo and neon accent, city night vibe',
       'monochromatic soft gray scale with warm accent',
       'cream, beige and dusty rose',
     ]
@@ -453,7 +454,7 @@ export default function Chat({ character, onChangeCharacter }) {
 
 The subject is always "${character.name}" (the character in the photo).${charContext}
 
-IMPORTANT — The "user" message below contains ONLY the user's scene description. If that description is vague (e.g. "random", "隨機", or ≤3 words), you MUST invent a completely unique, specific, vivid scene/location/situation yourself. Do NOT default to common scenes like beach, coffee shop, or park. Be creative and unpredictable — choose from ALL possible real-world settings (e.g. industrial warehouse rave, rooftop apiary at sunset, abandoned train station overgrown with vines, traditional teahouse during snowfall, aquarium tunnel at night, hot air balloon festival, vineyard in autumn, underground jazz bar, lunar new year temple fair, roller skating rink, etc.). Every generation must describe a DIFFERENT scene.
+IMPORTANT — The "user" message below contains ONLY the user's scene description. If that description is vague (e.g. "random", "隨機", or ≤3 words), you MUST invent a completely unique, specific, vivid scene/location/situation yourself from the full spectrum of real-world environments — equally likely to be indoor or outdoor, urban or rural, natural or man-made, mundane or dramatic. Pick randomly across all possibilities without favoring any category. Every generation must describe a DIFFERENT scene.
 
 Based on the character's body features above and the scene, generate a prompt that includes ALL of the following elements (each time with different choices):
 
@@ -693,161 +694,181 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
             </button>
           </div>
 
-          {/* outfit + accessories side by side on wide screens */}
-          <div className="outfit-acc-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
-
-          {/* outfit upload (1 set of clothing — locks outfit, scene random) */}
-          <div className="outfit-section"
-            onDragOver={e => { e.preventDefault(); setOutfitDragOver(true) }}
-            onDragLeave={() => setOutfitDragOver(false)}
-            onDrop={handleOutfitDrop}
-            style={{
-              flex: '1 1 280px', padding: '10px 12px', borderRadius: 'var(--radius-sm)',
-              background: outfitDragOver ? 'rgba(232,67,147,0.15)' : 'rgba(232,67,147,0.04)',
-              border: outfitDragOver ? '2px dashed var(--pink)' : '1px solid rgba(232,67,147,0.12)',
-              transition: 'all 0.2s',
-            }}>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
-              👗 服裝暫存（上傳 1 張衣服照片，給「虛擬女友」換新裝）
-            </p>
-            {outfit ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ position: 'relative', width: 56, height: 56, borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
-                  <img src={outfit.dataUrl} alt={outfit.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  <button onClick={removeOutfit}
-                    style={{
-                      position: 'absolute', top: 1, right: 1,
-                      width: 16, height: 16, borderRadius: '50%',
-                      background: 'rgba(0,0,0,0.6)', color: '#fff',
-                      border: 'none', cursor: 'pointer',
-                      fontSize: '0.5rem', lineHeight: '16px', padding: 0,
-                    }}>✕</button>
-                </div>
-                <input type="text" value={outfit.desc}
-                  onChange={e => setOutfit(prev => prev ? { ...prev, desc: e.target.value } : prev)}
-                  placeholder="描述這套服裝，例如：白色連身裙、草帽、涼鞋"
-                  style={{
-                    flex: 1, padding: '6px 10px', fontSize: '0.75rem',
-                    borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
-                    background: 'var(--bg-input)', color: 'var(--text)',
-                    outline: 'none', boxSizing: 'border-box',
-                  }} />
-              </div>
-            ) : outfitDragOver ? (
-              <p style={{ fontSize: '0.85rem', color: 'var(--pink)', textAlign: 'center', padding: '8px 0' }}>
-                📸 放開以上傳服裝
-              </p>
-            ) : (
-              <>
-                <input type="file" accept="image/*"
-                  ref={outfitInputRef}
-                  style={{ display: 'none' }}
-                  onChange={handleOutfitUpload} />
-                <button onClick={() => outfitInputRef.current?.click()}
-                  style={{
-                    padding: '6px 14px', fontSize: '0.8rem',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px dashed var(--border)',
-                    background: 'transparent', color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                  }}>
-                  + 上傳服裝照片
-                </button>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 8 }}>
-                  或拖曳圖片到此
-                </span>
-              </>
-            )}
-            {outfit && !outfit.desc && (
-              <p style={{ fontSize: '0.7rem', color: '#ff6b6b', marginTop: 6 }}>
-                ⚠️ 請填寫服裝描述，AI 才知道如何搭配
-              </p>
-            )}
-          </div>
-
-          {/* accessories upload (max 3, auto-labeled pic1-pic3, per-item required desc) */}
-          <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
-            style={{
-              flex: '1 1 280px', padding: '10px 12px',
-              borderRadius: 'var(--radius-sm)',
-              background: dragOver ? 'rgba(232,67,147,0.15)' : 'rgba(232,67,147,0.05)',
-              border: dragOver ? '2px dashed var(--pink)' : '1px solid rgba(232,67,147,0.15)',
-              transition: 'all 0.2s',
-            }}>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
-              📎 上傳穿戴物品（最多 3 張）{accessories.length > 0 && <span style={{ color: 'var(--pink)' }}>({accessories.length}/3)</span>}
-            </p>
-
-            {/* per-item display: thumbnail + label + required desc input */}
-            {accessories.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
-                {accessories.map(acc => (
-                  <div key={acc.id}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.1)' }}>
-                    <div style={{ position: 'relative', width: 48, height: 48, borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
-                      <span style={{
-                        position: 'absolute', top: 1, left: 1, zIndex: 1,
-                        fontSize: '0.55rem', background: 'var(--pink)', color: '#fff',
-                        padding: '0 4px', borderRadius: 3, lineHeight: '14px',
-                      }}>{acc.label}</span>
-                      <img src={acc.dataUrl} alt={acc.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <button onClick={() => removeAccessory(acc.id)}
-                        style={{
-                          position: 'absolute', top: 1, right: 1,
-                          width: 16, height: 16, borderRadius: '50%',
-                          background: 'rgba(0,0,0,0.6)', color: '#fff',
-                          border: 'none', cursor: 'pointer',
-                          fontSize: '0.5rem', lineHeight: '16px', padding: 0,
-                        }}>✕</button>
-                    </div>
-                    <input type="text" value={acc.desc}
-                      onChange={e => {
-                        const val = e.target.value
-                        setAccessories(prev => prev.map(a => a.id === acc.id ? { ...a, desc: val } : a))
-                      }}
-                      placeholder={`描述 ${acc.label}，例如：紅色貝雷帽（頭上戴）`}
-                      style={{
-                        flex: 1, padding: '6px 10px', fontSize: '0.75rem',
-                        borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
-                        background: 'var(--bg-input)', color: 'var(--text)',
-                        outline: 'none', boxSizing: 'border-box',
-                      }} />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* drag hint or max reached */}
-            {dragOver ? (
-              <p style={{ fontSize: '0.85rem', color: 'var(--pink)', textAlign: 'center', padding: '8px 0' }}>
-                📸 放開以上傳圖片
-              </p>
-            ) : accessories.length >= 3 ? (
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '4px 0' }}>
-                已達上傳上限 (3/3)
-              </p>
-            ) : (
-              <>
-            <input type="file" accept="image/*" multiple
-              ref={fileInputRef}
-              style={{ display: 'none' }}
-              onChange={handleAccessoryUpload} />
-            <button onClick={() => fileInputRef.current?.click()}
+          {/* collapsible outfit + accessories — collapsed by default, side by side when open */}
+          <div style={{ marginBottom: 12 }}>
+            <div onClick={() => setUploadAreaOpen(prev => !prev)}
               style={{
-                padding: '6px 14px', fontSize: '0.8rem',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px dashed var(--border)',
-                background: 'transparent', color: 'var(--text-muted)',
-                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                padding: '8px 0', userSelect: 'none',
               }}>
-              + 選擇圖片
-            </button>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 8 }}>
-              或拖曳圖片到此
-            </span>
-            </>)}
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', transition: 'transform 0.2s', transform: uploadAreaOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+                ▶
+              </span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                👗 服裝暫存 ＆ 📎 穿戴物品
+              </span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                {uploadAreaOpen ? '收起' : '展開'}
+              </span>
+            </div>
+
+            {uploadAreaOpen && (
+            <div className="outfit-acc-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+
+            {/* outfit upload (1 set of clothing — locks outfit, scene random) */}
+            <div className="outfit-section"
+              onDragOver={e => { e.preventDefault(); setOutfitDragOver(true) }}
+              onDragLeave={() => setOutfitDragOver(false)}
+              onDrop={handleOutfitDrop}
+              style={{
+                flex: '1 1 280px', padding: '10px 12px', borderRadius: 'var(--radius-sm)',
+                background: outfitDragOver ? 'rgba(232,67,147,0.15)' : 'rgba(232,67,147,0.04)',
+                border: outfitDragOver ? '2px dashed var(--pink)' : '1px solid rgba(232,67,147,0.12)',
+                transition: 'all 0.2s',
+              }}>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+                👗 服裝暫存（上傳 1 張衣服照片，給「虛擬女友」換新裝）
+              </p>
+              {outfit ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ position: 'relative', width: 56, height: 56, borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
+                    <img src={outfit.dataUrl} alt={outfit.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button onClick={removeOutfit}
+                      style={{
+                        position: 'absolute', top: 1, right: 1,
+                        width: 16, height: 16, borderRadius: '50%',
+                        background: 'rgba(0,0,0,0.6)', color: '#fff',
+                        border: 'none', cursor: 'pointer',
+                        fontSize: '0.5rem', lineHeight: '16px', padding: 0,
+                      }}>✕</button>
+                  </div>
+                  <input type="text" value={outfit.desc}
+                    onChange={e => setOutfit(prev => prev ? { ...prev, desc: e.target.value } : prev)}
+                    placeholder="描述這套服裝，例如：白色連身裙、草帽、涼鞋"
+                    style={{
+                      flex: 1, padding: '6px 10px', fontSize: '0.75rem',
+                      borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+                      background: 'var(--bg-input)', color: 'var(--text)',
+                      outline: 'none', boxSizing: 'border-box',
+                    }} />
+                </div>
+              ) : outfitDragOver ? (
+                <p style={{ fontSize: '0.85rem', color: 'var(--pink)', textAlign: 'center', padding: '8px 0' }}>
+                  📸 放開以上傳服裝
+                </p>
+              ) : (
+                <>
+                  <input type="file" accept="image/*"
+                    ref={outfitInputRef}
+                    style={{ display: 'none' }}
+                    onChange={handleOutfitUpload} />
+                  <button onClick={() => outfitInputRef.current?.click()}
+                    style={{
+                      padding: '6px 14px', fontSize: '0.8rem',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px dashed var(--border)',
+                      background: 'transparent', color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                    }}>
+                    + 上傳服裝照片
+                  </button>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 8 }}>
+                    或拖曳圖片到此
+                  </span>
+                </>
+              )}
+              {outfit && !outfit.desc && (
+                <p style={{ fontSize: '0.7rem', color: '#ff6b6b', marginTop: 6 }}>
+                  ⚠️ 請填寫服裝描述，AI 才知道如何搭配
+                </p>
+              )}
+            </div>
+
+            {/* accessories upload (max 3, auto-labeled pic1-pic3, per-item required desc) */}
+            <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+              style={{
+                flex: '1 1 280px', padding: '10px 12px',
+                borderRadius: 'var(--radius-sm)',
+                background: dragOver ? 'rgba(232,67,147,0.15)' : 'rgba(232,67,147,0.05)',
+                border: dragOver ? '2px dashed var(--pink)' : '1px solid rgba(232,67,147,0.15)',
+                transition: 'all 0.2s',
+              }}>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+                📎 上傳穿戴物品（最多 3 張）{accessories.length > 0 && <span style={{ color: 'var(--pink)' }}>({accessories.length}/3)</span>}
+              </p>
+
+              {/* per-item display: thumbnail + label + required desc input */}
+              {accessories.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
+                  {accessories.map(acc => (
+                    <div key={acc.id}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.1)' }}>
+                      <div style={{ position: 'relative', width: 48, height: 48, borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
+                        <span style={{
+                          position: 'absolute', top: 1, left: 1, zIndex: 1,
+                          fontSize: '0.55rem', background: 'var(--pink)', color: '#fff',
+                          padding: '0 4px', borderRadius: 3, lineHeight: '14px',
+                        }}>{acc.label}</span>
+                        <img src={acc.dataUrl} alt={acc.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <button onClick={() => removeAccessory(acc.id)}
+                          style={{
+                            position: 'absolute', top: 1, right: 1,
+                            width: 16, height: 16, borderRadius: '50%',
+                            background: 'rgba(0,0,0,0.6)', color: '#fff',
+                            border: 'none', cursor: 'pointer',
+                            fontSize: '0.5rem', lineHeight: '16px', padding: 0,
+                          }}>✕</button>
+                      </div>
+                      <input type="text" value={acc.desc}
+                        onChange={e => {
+                          const val = e.target.value
+                          setAccessories(prev => prev.map(a => a.id === acc.id ? { ...a, desc: val } : a))
+                        }}
+                        placeholder={`描述 ${acc.label}，例如：紅色貝雷帽（頭上戴）`}
+                        style={{
+                          flex: 1, padding: '6px 10px', fontSize: '0.75rem',
+                          borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+                          background: 'var(--bg-input)', color: 'var(--text)',
+                          outline: 'none', boxSizing: 'border-box',
+                        }} />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* drag hint or max reached */}
+              {dragOver ? (
+                <p style={{ fontSize: '0.85rem', color: 'var(--pink)', textAlign: 'center', padding: '8px 0' }}>
+                  📸 放開以上傳圖片
+                </p>
+              ) : accessories.length >= 3 ? (
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '4px 0' }}>
+                  已達上傳上限 (3/3)
+                </p>
+              ) : (
+                <>
+              <input type="file" accept="image/*" multiple
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleAccessoryUpload} />
+              <button onClick={() => fileInputRef.current?.click()}
+                style={{
+                  padding: '6px 14px', fontSize: '0.8rem',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px dashed var(--border)',
+                  background: 'transparent', color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                }}>
+                + 選擇圖片
+              </button>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 8 }}>
+                或拖曳圖片到此
+              </span>
+              </>)}
+            </div>
+            </div>{/* end .outfit-acc-row */}
+            )}
           </div>
-          </div>{/* end .outfit-acc-row */}
 
           {/* Mode description — both modes now use the same chat-driven flow */}
           <div style={{ marginBottom: 8, padding: '8px 0' }}>
@@ -867,7 +888,7 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
                   📋 情境場景模式
                 </p>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                  在對話中直接輸入場景描述（例如：「雪山頂看日出」），
+                  在對話中直接輸入場景描述（例如：「圖書館窗邊看書」），
                   或輸入「隨機 / random」讓 AI 即興抽卡！
                 </p>
               </>
@@ -910,7 +931,7 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
         </button>
         <textarea className="chat-input" rows={1} value={input}
           onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
-          placeholder={imgMode ? (proMode ? `描述你想拍的畫面...` : `輸入場景描述，如：雪山頂看日出`) : `跟${character.name}說說話...`} disabled={loading || genLoading} />
+          placeholder={imgMode ? (proMode ? `描述你想拍的畫面...` : `輸入場景描述，如：圖書館窗邊看書`) : `跟${character.name}說說話...`} disabled={loading || genLoading} />
         <button className="chat-send" onClick={sendMessage} disabled={loading || !input.trim()}>送出</button>
       </div>
 
