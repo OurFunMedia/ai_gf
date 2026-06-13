@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { get, put } from '../lib/db.js'
+import { get, put, getAll, del } from '../lib/db.js'
 
 const AGNES_API_KEY = import.meta.env.VITE_AGNES_API_KEY
 const AGNES_BASE = import.meta.env.VITE_AGNES_BASE_URL
@@ -379,6 +379,18 @@ export default function Chat({ character, onChangeCharacter }) {
     return `data:image/png;base64,${b64}`
   }
 
+  /* keep only the 30 most recent image records + their chat messages */
+  const pruneOldImages = async () => {
+    const all = await getAll('images')
+    if (all.length <= 30) return
+    all.sort((a, b) => b.timestamp - a.timestamp)
+    const stale = all.slice(30)
+    const staleUrls = new Set(stale.map(s => s.imageUrl))
+    for (const s of stale) await del('images', s.id)
+    /* remove associated chat messages to free data URL memory */
+    setMessages(prev => prev.filter(m => m.type !== 'image' || !staleUrls.has(m.imageUrl)))
+  }
+
   /* AI expand prompt with randomness — English output for better Agnes image quality */
   const expandPrompt = async (userPrompt, signal, hasRef = false) => {
     /* client-side scene type pick — guarantees diversity when input is vague */
@@ -564,6 +576,7 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
       /* persist to image history */
       const record = { id: `img_${Date.now()}`, imageUrl: dataUrl, scene: selectedScene, prompt: promptText, timestamp: Date.now() }
       await put('images', record)
+      await pruneOldImages()
 
       setImgMode(false); setSelectedScene(null); setCustomPrompt(''); setAccessories([])
       /* reset only data-URL reference (set via 修改這張圖), preserve external URLs */
@@ -615,6 +628,7 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
       /* persist to image history */
       const record = { id: `img_${Date.now()}`, imageUrl: dataUrl, scene: 'pro', prompt: expandedPrompt, timestamp: Date.now() }
       await put('images', record)
+      await pruneOldImages()
 
       setImgMode(false); setProMode(false); setAccessories([])
       /* reset only data-URL reference (set via 修改這張圖), preserve external URLs */
