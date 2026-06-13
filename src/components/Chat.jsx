@@ -67,6 +67,7 @@ export default function Chat({ character, onChangeCharacter }) {
 
   const [dragOver, setDragOver] = useState(false)
   const [uploadAreaOpen, setUploadAreaOpen] = useState(false)
+  const [hintOpen, setHintOpen] = useState(false)
 
   const abortRef = useRef(null)
   const persistTimer = useRef(null)
@@ -870,33 +871,43 @@ Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in t
             )}
           </div>
 
-          {/* Mode description — both modes now use the same chat-driven flow */}
-          <div style={{ marginBottom: 8, padding: '8px 0' }}>
-            {proMode ? (
-              <>
-                <p style={{ fontSize: '0.9rem', marginBottom: 8, lineHeight: 1.5 }}>
-                  🌟 大師級男友視覺攝影模式
-                </p>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                  在對話中告訴小艾你想拍什麼照片（例如：「我想在海邊拍一張照片」），
-                  她會一步步引導你完成專業級構圖，最後自動生成大師級作品！
-                </p>
-              </>
-            ) : (
-              <>
-                <p style={{ fontSize: '0.9rem', marginBottom: 8, lineHeight: 1.5 }}>
-                  📋 情境場景模式
-                </p>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                  在對話中直接輸入場景描述（例如：「圖書館窗邊看書」），
-                  或輸入「隨機 / random」讓 AI 即興抽卡！
-                </p>
-              </>
-            )}
-            {accessories.length > 0 && accessories.some(a => !a.desc) && (
-              <p style={{ fontSize: '0.75rem', color: '#ff6b6b', marginTop: 6 }}>
-                ⚠️ 請為每個上傳的物品填寫描述，AI 才知道如何搭配
-              </p>
+          {/* Mode description — collapsible hint */}
+          <div style={{ marginBottom: 8, padding: '4px 0' }}>
+            <div onClick={() => setHintOpen(prev => !prev)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                padding: '4px 0', userSelect: 'none',
+              }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', transition: 'transform 0.2s', transform: hintOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+                ▶
+              </span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                {proMode ? '🌟 大師級男友視覺攝影模式' : '📋 情境場景模式'}
+              </span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                {hintOpen ? '收起提示' : '展開提示'}
+              </span>
+            </div>
+
+            {hintOpen && (
+              <div style={{ padding: '8px 0 4px' }}>
+                {proMode ? (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                    在對話中告訴小艾你想拍什麼照片（例如：「我想在海邊拍一張照片」），
+                    她會一步步引導你完成專業級構圖，最後自動生成大師級作品！
+                  </p>
+                ) : (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                    在對話中直接輸入場景描述（例如：「圖書館窗邊看書」），
+                    或輸入「隨機 / random」讓 AI 即興抽卡！
+                  </p>
+                )}
+                {accessories.length > 0 && accessories.some(a => !a.desc) && (
+                  <p style={{ fontSize: '0.75rem', color: '#ff6b6b', marginTop: 6 }}>
+                    ⚠️ 請為每個上傳的物品填寫描述，AI 才知道如何搭配
+                  </p>
+                )}
+              </div>
             )}
           </div>
           </>)}
