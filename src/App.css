@@ -38,14 +38,22 @@
 .chat-send:hover { background: var(--pink-dark); }
 .chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* Settings */
+/* ===== 設定頁面（Settings tab） ===== */
+/* 整體設定表單容器 — 限制寬度、水平置中 */
 .settings { max-width: 500px; margin: 0 auto; padding-bottom: 32px; }
+/* 設定頁面標題（「🎀 角色設定」） */
 .settings h2 { font-size: 1.25rem; margin-bottom: 20px; color: var(--pink-light); }
+/* 單一設定項目群組（名稱、個性、參考圖、體型參數等） */
 .setting-group { margin-bottom: 20px; }
+/* 群組內的標籤文字 */
 .setting-group label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
+/* 文字輸入框與 textarea 共用樣式 */
 .setting-group input, .setting-group textarea { width: 100%; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-input); color: var(--text); outline: none; }
+/* 輸入框聚焦時：外框變為主色 */
 .setting-group input:focus, .setting-group textarea:focus { border-color: var(--pink); }
+/* 個性設定（system prompt）多行輸入 */
 .setting-group textarea { min-height: 120px; resize: vertical; }
+/* 角色參考圖預覽 — 方形裁切 */
 .ref-preview { width: 120px; height: 120px; border-radius: var(--radius); object-fit: cover; border: 2px solid var(--border); }
 
 /* Image Gen */
@@ -58,17 +66,26 @@
 .scene-btn.selected { border-color: var(--pink); background: rgba(232, 67, 147, 0.15); }
 .scene-btn .scene-icon { font-size: 1.8rem; display: block; margin-bottom: 6px; }
 
-/* Body params */
+/* ===== 體型參數（身體數值選擇器） ===== */
+/* 每一列參數（身高、胸圍、腰圍等）的間距 */
 .body-row { margin-bottom: 16px; }
+/* 年紀數值輸入框（數字類型），限制寬度 */
 input.body-age-input { width: 80px; padding: 8px 12px; font-size: 0.9rem; }
+/* 選項按鈕容器 — 橫向 flex 換行 */
 .body-options { display: flex; flex-wrap: wrap; gap: 8px; }
+/* 單一選項按鈕（如「中等」「纖瘦」「可愛」） */
 .body-opt {
   padding: 6px 14px; border-radius: var(--radius-sm); background: var(--bg-input);
   border: 1px solid var(--border); color: var(--text); font-size: 0.85rem;
   transition: all 0.15s; cursor: pointer;
 }
+/* 選項按鈕 hover 效果 */
 .body-opt:hover { border-color: var(--pink-light); background: var(--bg-card); }
+/* 選項按鈕選中狀態 — 主色邊框 + 半透明背景 */
 .body-opt.selected { border-color: var(--pink); background: rgba(232, 67, 147, 0.15); color: var(--pink-light); }
+/* 風格選項的說明文字 — 灰底提示，顯示當前選項的具體描述 */
+.style-hint { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 8px; line-height: 1.5; }
+.style-hint strong { color: var(--pink-light); }
 .gen-output { margin-top: 16px; text-align: center; }
 .gen-output img { max-width: 100%; border-radius: var(--radius); border: 1px solid var(--border); }
 .gen-btn { padding: 12px 32px; border-radius: var(--radius); background: var(--pink); color: white; font-weight: 600; font-size: 1rem; transition: background 0.2s; width: 100%; }
@@ -77,19 +94,24 @@ input.body-age-input { width: 80px; padding: 8px 12px; font-size: 0.9rem; }
 .loading { text-align: center; padding: 20px; color: var(--text-muted); }
 .error { text-align: center; padding: 12px; color: #ff6b6b; background: rgba(255, 107, 107, 0.1); border-radius: var(--radius-sm); margin: 8px 0; font-size: 0.85rem; }
 
-/* Toggle switch */
+/* ===== 開關元件（Toggle Switch） ===== */
+/* 標籤與開關左右並排 */
 .toggle-wrap { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+/* 開關軌道 — 橢圓形背景 */
 .toggle-track {
   width: 44px; height: 24px; border-radius: 12px;
   background: var(--border); position: relative; flex-shrink: 0;
   transition: background 0.2s; cursor: pointer;
 }
+/* 開關開啟：軌道變為主色 */
 .toggle-track.on { background: var(--pink); }
+/* 開關滑鈕 — 白色圓形 */
 .toggle-thumb {
   width: 18px; height: 18px; border-radius: 50%;
   background: #fff; position: absolute; top: 3px; left: 3px;
   transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
+/* 開關開啟：滑鈕向右平移 */
 .toggle-track.on .toggle-thumb { transform: translateX(20px); }
 
 /* Image gen progress */
@@ -171,6 +193,7 @@ input.body-age-input { width: 80px; padding: 8px 12px; font-size: 0.9rem; }
   .scene-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .scene-btn { font-size: 0.8rem; padding: 12px 6px; min-height: 52px; }
   .scene-btn .scene-icon { font-size: 1.2rem; }
+  /* 手機版：設定頁面滿寬，選項按鈕放大方便點擊 */
   .settings { max-width: 100%; }
   .body-opt { font-size: 0.9rem; padding: 10px 16px; min-height: 42px; min-width: 44px; }
   .setting-group label { font-size: 0.9rem; }
@@ -183,7 +206,8 @@ input.body-age-input { width: 80px; padding: 8px 12px; font-size: 0.9rem; }
   .chat-container .tab { flex: none; font-size: 0.9rem; padding: 6px 0; min-width: 36px; min-height: 36px; width: 36px; }
 }
 
-/* Toast notification */
+/* ===== Toast 提示（儲存成功短暫彈出） ===== */
+/* 固定定位、底部置中、主色邊框 */
 .toast {
   position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
   background: var(--bg-card); color: var(--text); border: 1px solid var(--pink);
@@ -192,6 +216,7 @@ input.body-age-input { width: 80px; padding: 8px 12px; font-size: 0.9rem; }
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   animation: toastIn 0.3s ease;
 }
+/* Toast 淡入＋上滑動畫 */
 @keyframes toastIn {
   from { opacity: 0; transform: translateX(-50%) translateY(10px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
