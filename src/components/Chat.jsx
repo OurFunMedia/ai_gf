@@ -231,6 +231,7 @@ export default function Chat({ character, onChangeCharacter }) {
 
     /* scene mode: treat chat message as scene prompt, generate image directly */
     if (imgMode && !proMode) {
+      setMessages(prev => [...prev, { id: uid(), role: 'user', content: userMsg }])
       await generateImage(userMsg)
       return
     }
