@@ -495,34 +495,34 @@ export default function Chat({ character, onChangeCharacter }) {
       ? `\n角色資訊：${bodyDescText}${refNote}`
       : ''
 
-    const sysMsg = `You are a professional photographer and cinematographer. Your task is to expand a short scene description into a rich, detailed English image prompt for a photo-realistic generation model.
+    const sysMsg = `You are a photographer. Expand a short Chinese scene description into an English photo prompt for a realistic image generator.
 
-The subject is always "${character.name}" (the character in the photo).${charContext}
+The subject is "${character.name}".${charContext}
 
-**PRIORITY RULE — User input comes first.** If the user explicitly describes a scene, location, weather, or time of day, ALWAYS use what they specify. The suggestions below only fill in aspects the user did NOT mention. Never override the user's explicit request.
+**CORE RULES:**
+1. User's input is the foundation — ALWAYS base the scene entirely on what they wrote. Never override it.
+2. Add reasonable story details around their input (what the character is doing, why they're there, the atmosphere).
+3. The result MUST look like a REAL photograph taken by a real camera. Absolutely NO: CG, 3D render, illustration, anime, cartoon, painting, fantasy, sci-fi, digital art, or any non-photorealistic style.
 
-If the user's description IS vague (e.g. "random", "隨機", or ≤3 words), then generate a scene matching this type: ${sceneType}. Invent a specific, vivid location within that category. Example: if type is "library" then describe exactly which library, what the character is doing there, what objects are nearby.
+If the user's input is vague (e.g. "random", "隨機", or ≤3 words), create a scene matching: ${sceneType}.
 
-Generate a prompt that includes all relevant elements. For each aspect, use the user's input if provided; otherwise use the suggestion below:
+Elements to include (use user's input if provided, otherwise use the suggestion):
 
 ${clothingRule}
-2. 🧍 Pose: Choose a unique pose different from last time. Examples: looking back with a smile, playing with hair,低頭 scrolling phone, holding a drink, leaning against a wall, adjusting collar, tying shoelaces, stretching, looking out a window, walking naturally, sitting on a bench, browsing bookshelf, holding a coffee cup, laughing naturally.
-3. ☁️ Weather/Atmosphere: Use user's description if provided, otherwise: ${weather}
-4. 🌅 Time/Lighting: Use user's description if provided, otherwise: ${timeOfDay}, ${season}. Describe natural light effect accordingly.
+2. 🧍 Pose: Choose a natural pose fitting the scene. Examples: looking back with a smile, playing with hair,低頭 scrolling phone, holding a drink, leaning against a wall, adjusting collar, tying shoelaces, stretching, looking out a window, walking naturally, sitting on a bench, browsing bookshelf, holding a coffee cup, laughing naturally.
+3. ☁️ Weather/Atmosphere: Use user's if provided, otherwise: ${weather}
+4. 🌅 Time/Lighting: Use user's if provided, otherwise: ${timeOfDay}, ${season}
 5. 🎨 Color Palette: ${colorPalette}
-6. 😊 Expression/Mood: Choose a ${character.style} style expression — ${styleExprs}.
-7. 📷 Camera: ${cameraAngle}
-8. ✨ Quality: ultra-detailed skin texture, natural skin pores, realistic eye catchlight, natural hair strands, photorealistic, 8K
+6. 😊 Expression/Mood: ${character.style} style — ${styleExprs}
+7. 📷 Camera: ${cameraAngle}, natural depth of field
+8. ✨ Quality: realistic skin texture, natural pores, eye catchlight, hair strands, photorealistic, 8K, natural lighting
+9. 🚫 ANTI-CG: real photo only — no CGI, no 3D render, no illustration, no painting, no anime, no cartoon, no stylized art
 
-Style direction: ${style}
+Style: ${style}${hasRef ? `
 
-You MUST include the character's full body description (age, height, figure, bust, waist, hips, style) in the prompt so the image model knows exactly what the character looks like.${hasRef ? `
+REFERENCE PHOTO MODE: A reference photo will be provided. Your prompt MUST begin with: "KEEP: [face, hairstyle, body, clothing unchanged]. CHANGE: [background/scene completely to the new setting]." Then describe the scene as usual.` : ''}
 
-IMPORTANT — A reference photo of the character will be provided to the image model. Your prompt MUST explicitly tell the image model what to keep unchanged vs what to change. Begin the prompt with: "KEEP: [face, hairstyle, body, clothing unchanged]. CHANGE: [background/scene completely to the new setting below]." Then describe the scene as usual, including the character's body description. This ensures img2img generates a completely different background while preserving the character's identity.` : ''}
-
-Output ONLY the expanded English prompt. One paragraph. No explanations, no prefixes, no line breaks.
-
-Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in the user's message — rule 1 takes precedence.`
+Output ONLY the expanded prompt. One paragraph. English. No explanations, no prefixes.`
     const useNvidia = !!NVIDIA_API_KEY
     const baseUrl = useNvidia ? NVIDIA_BASE : AGNES_BASE
     const model = useNvidia ? NVIDIA_CHAT_MODEL : AGNES_CHAT_MODEL
