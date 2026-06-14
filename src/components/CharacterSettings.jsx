@@ -24,6 +24,7 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
   const [hipWidth, setHipWidth] = useState(character.hipWidth ?? '中')
   const [hipShape, setHipShape] = useState(character.hipShape ?? '翹')
   const [style, setStyle] = useState(character.style ?? '可愛')
+  const [showPrompt, setShowPrompt] = useState(character.showPrompt ?? true)
 
   // Toast 提示顯示狀態
   const [toastVisible, setToastVisible] = useState(false)
@@ -42,7 +43,7 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
       refImageUrl: localRefUrl,
       age: Math.min(60, Math.max(18, age)),
       height, figure, bust, waist, hipWidth, hipShape, style,
-      showPrompt: character.showPrompt,
+      showPrompt,
     })
     showToast()
   }
@@ -181,9 +182,9 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
 
       {/* Toggle：圖片生成後是否顯示提示詞 */}
       <div className="setting-group">
-        <div className="toggle-wrap" onClick={() => onChange({ ...character, showPrompt: !character.showPrompt })}>
+          <div className="toggle-wrap" onClick={() => setShowPrompt(v => !v)}>
           <span>顯示生成提示詞</span>
-          <div className={`toggle-track${character.showPrompt ? ' on' : ''}`}>
+          <div className={`toggle-track${showPrompt ? ' on' : ''}`}>
             <div className="toggle-thumb" />
           </div>
         </div>
