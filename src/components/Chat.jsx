@@ -402,16 +402,7 @@ export default function Chat({ character, onChangeCharacter }) {
     const data = await res.json()
     const imageUrl = data.data?.[0]?.url
     if (!imageUrl) throw new Error('No image returned')
-    /* fetch the CDN-hosted image and convert to base64 data URL */
-    const imgRes = await fetch(imageUrl, { signal })
-    if (!imgRes.ok) throw new Error('Failed to fetch generated image')
-    const blob = await imgRes.blob()
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result)
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
-    })
+    return imageUrl
   }
 
   /* keep only the 30 most recent image records + their chat messages */
