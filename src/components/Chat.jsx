@@ -548,30 +548,44 @@ Style: ${style}${hasRef ? `
 REFERENCE PHOTO MODE: A reference photo will be provided. Your prompt MUST begin with: "KEEP: [face, hairstyle, body, clothing unchanged]. CHANGE: [background/scene completely to the new setting]." Then describe the scene as usual.` : ''}
 
 Output ONLY the expanded prompt. One paragraph. English. No explanations, no prefixes.`
-    const useNvidia = !!NVIDIA_API_KEY
-    const baseUrl = useNvidia ? NVIDIA_BASE : AGNES_BASE
-    const model = useNvidia ? NVIDIA_CHAT_MODEL : AGNES_CHAT_MODEL
-    const apiKey = useNvidia ? NVIDIA_API_KEY : AGNES_API_KEY
-    const body = {
-      model,
-      messages: [
-        { role: 'system', content: sysMsg },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: PROMPT_TEMPERATURE, max_tokens: PROMPT_MAX_TOKENS,
-    }
-    if (!useNvidia) body.chat_template_kwargs = { enable_thinking: true }
+    let apiResult = null
+    try {
+      const useNvidia = !!NVIDIA_API_KEY
+      const baseUrl = useNvidia ? NVIDIA_BASE : AGNES_BASE
+      const model = useNvidia ? NVIDIA_CHAT_MODEL : AGNES_CHAT_MODEL
+      const apiKey = useNvidia ? NVIDIA_API_KEY : AGNES_API_KEY
+      const body = {
+        model,
+        messages: [
+          { role: 'system', content: sysMsg },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: PROMPT_TEMPERATURE, max_tokens: PROMPT_MAX_TOKENS,
+      }
+      if (!useNvidia) body.chat_template_kwargs = { enable_thinking: true }
 
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal,
-    })
-    if (!res.ok) return userPrompt
-    const data = await res.json()
-    const expanded = data.choices?.[0]?.message?.content?.trim()
-    return expanded || userPrompt
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal,
+      })
+      if (res.ok) {
+        const data = await res.json()
+        apiResult = data.choices?.[0]?.message?.content?.trim()
+      }
+    } catch {
+      /* CORS or network error — fallback to client-side construction below */
+    }
+    if (apiResult) return apiResult
+
+    /* fallback: build a prompt client-side using the random pool already selected */
+    const bodyInfo = buildBodyDesc(character)
+    const refPrefix = hasRef
+      ? `KEEP: face, hairstyle, body${outfit?.desc ? '' : ', clothing'} unchanged. CHANGE: background/scene completely to the new setting. `
+      : ''
+    const wearList = accessories.filter(a => a.desc).map(a => `${a.label}=${a.desc}`).join(', ')
+    return `${refPrefix}${character.name} is ${userPrompt}. ${sceneType}. ${timeOfDay}, ${season}, ${weather}. ${weather === 'sunny' || weather === 'clear' || weather === 'golden haze' ? 'Natural lighting' : weather === 'night' || weather === 'midnight' || weather === 'deep night' ? 'Ambient artificial lighting' : 'Soft diffused lighting'}. ${style}. Color palette: ${colorPalette}. ${bodyInfo ? `Body: ${bodyInfo}. ` : ''}${wearList ? `Wearing accessories: ${wearList}. ` : ''}${styleExprs}. Camera: ${cameraAngle}. Realistic skin texture, natural imperfections, photorealistic, 8K. NO CGI, NO illustration, NO anime, NO AI plastic look.`
   }
 
   const generateImage = async (overridePrompt) => {
