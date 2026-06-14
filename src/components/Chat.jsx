@@ -75,6 +75,7 @@ export default function Chat({ character, onChangeCharacter }) {
 
   const abortRef = useRef(null)
   const persistTimer = useRef(null)
+  const dirtyRef = useRef(false)
   const cancelGen = () => {
     abortRef.current?.abort()
     setGenLoading(false); setGenStatus(''); setGenProgress(0); setError('')
@@ -99,14 +100,29 @@ export default function Chat({ character, onChangeCharacter }) {
   /* debounced persist messages to IndexedDB */
   useEffect(() => {
     if (!ready) return
+    dirtyRef.current = true
     clearTimeout(persistTimer.current)
     persistTimer.current = setTimeout(() => {
-      put('messages', { id: 'chat', messages }).catch((err) => {
-        console.error('Failed to save messages:', err)
-      })
+      put('messages', { id: 'chat', messages })
+        .then(() => { dirtyRef.current = false })
+        .catch((err) => {
+          console.error('Failed to save messages:', err)
+          dirtyRef.current = false
+        })
     }, 1500)
     return () => clearTimeout(persistTimer.current)
   }, [messages, ready])
+
+  /* beforeunload — warn when unsaved messages or image generation in progress */
+  useEffect(() => {
+    const handler = (e) => {
+      if (!dirtyRef.current && !genLoading) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [genLoading])
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
