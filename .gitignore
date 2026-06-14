@@ -5,3 +5,4 @@ dist
 .playwright-mcp/
 .omo/
 mobile_*.png
+worker/node_modules/

@@ -15,9 +15,7 @@ const AGNES_BASE = import.meta.env.VITE_AGNES_BASE_URL
 const AGNES_CHAT_MODEL = import.meta.env.VITE_AGNES_CHAT_MODEL
 const AGNES_IMAGE_MODEL = import.meta.env.VITE_AGNES_IMAGE_MODEL
 
-const NVIDIA_API_KEY = import.meta.env.VITE_NVIDIA_API_KEY
-const NVIDIA_BASE = import.meta.env.VITE_NVIDIA_BASE_URL
-const NVIDIA_CHAT_MODEL = import.meta.env.VITE_NVIDIA_CHAT_MODEL
+const NVIDIA_WORKER_URL = import.meta.env.VITE_NVIDIA_WORKER_URL || 'https://ai-gf-nvidia-proxy-production.tobyyip-work.workers.dev'
 
 const WELCOME = (name) => `嗨～我是${name}！今天過得怎麼樣呀？😊`
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
@@ -550,23 +548,18 @@ REFERENCE PHOTO MODE: A reference photo will be provided. Your prompt MUST begin
 Output ONLY the expanded prompt. One paragraph. English. No explanations, no prefixes.`
     let apiResult = null
     try {
-      const useNvidia = !!NVIDIA_API_KEY
-      const baseUrl = useNvidia ? NVIDIA_BASE : AGNES_BASE
-      const model = useNvidia ? NVIDIA_CHAT_MODEL : AGNES_CHAT_MODEL
-      const apiKey = useNvidia ? NVIDIA_API_KEY : AGNES_API_KEY
+      /* call Cloudflare Worker → NVIDIA M3 (browser-safe, no CORS) */
       const body = {
-        model,
         messages: [
           { role: 'system', content: sysMsg },
           { role: 'user', content: userPrompt },
         ],
-        temperature: PROMPT_TEMPERATURE, max_tokens: PROMPT_MAX_TOKENS,
+        temperature: PROMPT_TEMPERATURE,
+        max_tokens: PROMPT_MAX_TOKENS,
       }
-      if (!useNvidia) body.chat_template_kwargs = { enable_thinking: true }
-
-      const res = await fetch(`${baseUrl}/chat/completions`, {
+      const res = await fetch(NVIDIA_WORKER_URL, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
         signal,
       })
@@ -575,7 +568,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
         apiResult = data.choices?.[0]?.message?.content?.trim()
       }
     } catch {
-      /* CORS or network error — fallback to client-side construction below */
+      /* Worker or network error — fallback to client-side construction below */
     }
     if (apiResult) return apiResult
 
