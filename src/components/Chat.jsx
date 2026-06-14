@@ -499,14 +499,16 @@ export default function Chat({ character, onChangeCharacter }) {
 
 The subject is always "${character.name}" (the character in the photo).${charContext}
 
-If the user's description is vague (e.g. "random", "隨機", or ≤3 words), generate a scene that matches this type: ${sceneType}. Invent a specific, vivid location within that category. Example: if type is "library" then describe exactly which library, what the character is doing there, what objects are nearby. Do NOT default to outdoor street scenes when other categories are requested.
+**PRIORITY RULE — User input comes first.** If the user explicitly describes a scene, location, weather, or time of day, ALWAYS use what they specify. The suggestions below only fill in aspects the user did NOT mention. Never override the user's explicit request.
 
-Based on the character's body features above and the scene, generate a prompt that includes ALL of the following elements (each time with different choices):
+If the user's description IS vague (e.g. "random", "隨機", or ≤3 words), then generate a scene matching this type: ${sceneType}. Invent a specific, vivid location within that category. Example: if type is "library" then describe exactly which library, what the character is doing there, what objects are nearby.
+
+Generate a prompt that includes all relevant elements. For each aspect, use the user's input if provided; otherwise use the suggestion below:
 
 ${clothingRule}
 2. 🧍 Pose: Choose a unique pose different from last time. Examples: looking back with a smile, playing with hair,低頭 scrolling phone, holding a drink, leaning against a wall, adjusting collar, tying shoelaces, stretching, looking out a window, walking naturally, sitting on a bench, browsing bookshelf, holding a coffee cup, laughing naturally.
-3. ☁️ Weather/Atmosphere: ${weather}
-4. 🌅 Time/Lighting: ${timeOfDay}, ${season}. Describe natural light effect accordingly.
+3. ☁️ Weather/Atmosphere: Use user's description if provided, otherwise: ${weather}
+4. 🌅 Time/Lighting: Use user's description if provided, otherwise: ${timeOfDay}, ${season}. Describe natural light effect accordingly.
 5. 🎨 Color Palette: ${colorPalette}
 6. 😊 Expression/Mood: Choose a ${character.style} style expression — ${styleExprs}.
 7. 📷 Camera: ${cameraAngle}
