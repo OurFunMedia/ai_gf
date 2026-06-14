@@ -35,7 +35,7 @@ jobs:
           VITE_AGNES_BASE_URL: https://apihub.agnes-ai.com/v1
           VITE_AGNES_CHAT_MODEL: agnes-2.0-flash
           VITE_AGNES_IMAGE_MODEL: agnes-image-2.1-flash
-          VITE_NVIDIA_WORKER_URL: https://ai-gf-nvidia-proxy.tobyyip-work.workers.dev
+          VITE_NVIDIA_WORKER_URL: https://ai-gf-zen-proxy-production.tobyyip-work.workers.dev
 
       - uses: actions/configure-pages@v4
 
