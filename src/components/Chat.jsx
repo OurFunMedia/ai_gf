@@ -499,10 +499,11 @@ export default function Chat({ character, onChangeCharacter }) {
 
 The subject is "${character.name}".${charContext}
 
-**CORE RULES:**
+**CORE RULES (strictly enforced):**
 1. User's input is the foundation — ALWAYS base the scene entirely on what they wrote. Never override it.
 2. Add reasonable story details around their input (what the character is doing, why they're there, the atmosphere).
-3. The result MUST look like a REAL photograph taken by a real camera. Absolutely NO: CG, 3D render, illustration, anime, cartoon, painting, fantasy, sci-fi, digital art, or any non-photorealistic style.
+3. MUST look like a REAL photograph — absolutely NO: CG, 3D render, illustration, anime, cartoon, painting, fantasy, sci-fi, digital art, stylized, or any non-photorealistic style.
+4. STRICTLY FORBID: AI plastic look (AI膠圖) — no overly smooth skin, no porcelain face, no wax-like texture, no artificial perfection, no generic AI face. Must have natural skin imperfections, real human features, natural asymmetry, authentic texture.
 
 If the user's input is vague (e.g. "random", "隨機", or ≤3 words), create a scene matching: ${sceneType}.
 
@@ -515,8 +516,8 @@ ${clothingRule}
 5. 🎨 Color Palette: ${colorPalette}
 6. 😊 Expression/Mood: ${character.style} style — ${styleExprs}
 7. 📷 Camera: ${cameraAngle}, natural depth of field
-8. ✨ Quality: realistic skin texture, natural pores, eye catchlight, hair strands, photorealistic, 8K, natural lighting
-9. 🚫 ANTI-CG: real photo only — no CGI, no 3D render, no illustration, no painting, no anime, no cartoon, no stylized art
+8. ✨ Quality: realistic skin texture, natural pores, fine wrinkles, subtle blemishes, natural skin oil sheen, real hair strands, realistic eye catchlight, natural shadows, photorealistic, 8K
+9. 🚫 ANTI-CG & ANTI-AI: no CGI, no 3D render, no illustration, no painting, no anime, no cartoon, no stylized art, NO AI plastic look, no wax skin, no porcelain face, no smooth fake perfection, no over-polished digital art look
 
 Style: ${style}${hasRef ? `
 
