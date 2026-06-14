@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 /**
  * CharacterSettings — 角色設定頁面
@@ -7,15 +7,15 @@ import { useState } from 'react'
  * - 編輯角色名稱、個性（system prompt）、外貌參考圖
  * - 體型參數（年齡、身高、身材、三圍、風格）
  * - 開關「顯示生成提示詞」
- * - 儲存設定（寫入 IndexedDB）與清除聊天記錄
+ * - 自動儲存設定（1 秒防抖後寫入 IndexedDB）與清除聊天記錄
  */
 export default function CharacterSettings({ character, onChange, onClearChat }) {
-  // ---- 表單本地狀態（編輯中不直接寫入 IndexedDB） ----
+  // ---- 表單本地狀態 ----
   const [localName, setLocalName] = useState(character.name)
   const [localPersonality, setLocalPersonality] = useState(character.personality)
   const [localRefUrl, setLocalRefUrl] = useState(character.refImageUrl)
 
-  // 體型參數（body params），用於組裝圖片 prompt
+  // 體型參數
   const [age, setAge] = useState(character.age ?? 22)
   const [height, setHeight] = useState(character.height ?? '中等')
   const [figure, setFigure] = useState(character.figure ?? '勻稱')
@@ -26,8 +26,10 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
   const [style, setStyle] = useState(character.style ?? '可愛')
   const [showPrompt, setShowPrompt] = useState(character.showPrompt ?? true)
 
-  // Toast 提示顯示狀態
+  // Toast
   const [toastVisible, setToastVisible] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const saveTimer = useRef(null)
 
   /** 顯示 Toast，2 秒後自動隱藏 */
   const showToast = () => {
@@ -37,6 +39,7 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
 
   /** 儲存所有設定至上層（App.jsx），年齡限制 18-60 */
   const save = () => {
+    setSaving(true)
     onChange({
       name: localName,
       personality: localPersonality,
@@ -45,8 +48,17 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
       height, figure, bust, waist, hipWidth, hipShape, style,
       showPrompt,
     })
+    // 下一次渲染時關閉 saving 狀態
+    setTimeout(() => setSaving(false), 400)
     showToast()
   }
+
+  /* auto-save: 任何設定變動後 1 秒防抖寫入 */
+  useEffect(() => {
+    clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(save, 1000)
+    return () => clearTimeout(saveTimer.current)
+  }, [localName, localPersonality, localRefUrl, age, height, figure, bust, waist, hipWidth, hipShape, style, showPrompt])
 
   /**
    * SelectRow — 單一選項列的通用元件
@@ -193,8 +205,14 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
         </p>
       </div>
 
-      {/* 儲存按鈕 */}
-      <button className="gen-btn" style={{ marginTop: 12 }} onClick={save}>儲存設定</button>
+      {/* 自動儲存狀態 */}
+      <div style={{ textAlign: 'center', marginTop: 12 }}>
+        {saving ? (
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>儲存中…</span>
+        ) : (
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>自動儲存 ✓</span>
+        )}
+      </div>
       {toastVisible && <div className="toast">✅ 設定已儲存</div>}
 
       {/* ===== 危險區域 ===== */}
