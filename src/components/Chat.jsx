@@ -15,6 +15,8 @@ const AGNES_BASE = import.meta.env.VITE_AGNES_BASE_URL
 const AGNES_CHAT_MODEL = import.meta.env.VITE_AGNES_CHAT_MODEL
 const AGNES_IMAGE_MODEL = import.meta.env.VITE_AGNES_IMAGE_MODEL
 
+const NVIDIA_WORKER_URL = import.meta.env.VITE_NVIDIA_WORKER_URL || 'https://ai-gf-nvidia-proxy.tobyyip-work.workers.dev'
+
 const WELCOME = (name) => `嗨～我是${name}！今天過得怎麼樣呀？😊`
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
 
@@ -547,15 +549,11 @@ REFERENCE PHOTO MODE: A reference photo will be provided. Your prompt MUST begin
 Output ONLY the expanded prompt. One paragraph. English. No explanations, no prefixes.`
     let apiResult = null
     try {
-      /* call Agnes Chat API (same base URL as image API, same key, no CORS issue) */
-      const res = await fetch(`${AGNES_BASE}/chat/completions`, {
+      /* call Cloudflare Worker → NVIDIA DeepSeek V4 Flash (CORS-safe) */
+      const res = await fetch(NVIDIA_WORKER_URL, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${AGNES_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: AGNES_CHAT_MODEL,
           messages: [
             { role: 'system', content: sysMsg },
             { role: 'user', content: userPrompt },
@@ -570,7 +568,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
         apiResult = data.choices?.[0]?.message?.content?.trim()
       }
     } catch {
-      /* Agnes Chat API error — fallback to client-side construction below */
+      /* Worker or network error — fallback to client-side construction below */
     }
     if (apiResult) return apiResult
 
