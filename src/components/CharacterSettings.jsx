@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { MIN_AGE, MAX_AGE, TOAST_DURATION_MS } from '../constants.js'
 
 /**
  * CharacterSettings — 角色設定頁面
@@ -34,7 +35,7 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
   /** 顯示 Toast，2 秒後自動隱藏 */
   const showToast = () => {
     setToastVisible(true)
-    setTimeout(() => setToastVisible(false), 2000)
+    setTimeout(() => setToastVisible(false), TOAST_DURATION_MS)
   }
 
   /** 儲存所有設定至上層（App.jsx），年齡限制 18-60 */
@@ -44,7 +45,7 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
       name: localName,
       personality: localPersonality,
       refImageUrl: localRefUrl,
-      age: Math.min(60, Math.max(18, age)),
+      age: Math.min(MAX_AGE, Math.max(MIN_AGE, age)),
       height, figure, bust, waist, hipWidth, hipShape, style,
       showPrompt,
     })

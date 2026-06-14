@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getAll, del } from '../lib/db.js'
+import { IMAGE_TRUNCATE_MAX } from '../constants.js'
 
 export default function ImageGen({ character }) {
   const [photos, setPhotos] = useState([])
@@ -34,7 +35,7 @@ export default function ImageGen({ character }) {
     return d.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
   }
 
-  const truncatePrompt = (text, max = 30) => {
+  const truncatePrompt = (text, max = IMAGE_TRUNCATE_MAX) => {
     return text.length > max ? text.slice(0, max) + '…' : text
   }
 

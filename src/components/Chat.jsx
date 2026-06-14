@@ -1,5 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
 import { get, put, getAll, del } from '../lib/db.js'
+import {
+  CHAT_TEMPERATURE, CHAT_MAX_TOKENS,
+  MESSAGE_PERSIST_DELAY_MS, IMAGE_SIZE, MAX_ACCESSORIES,
+  MAX_IMAGE_COUNT, PROMPT_TEMPERATURE, PROMPT_MAX_TOKENS,
+  PRO_MODE_MIN_CHARS, PRO_MODE_CANDIDATE_MIN,
+  PROGRESS_INIT, PROGRESS_EXPANDING, PROGRESS_EXPANDED,
+  PROGRESS_API_CALL, PROGRESS_DONE,
+  PROGRESS_PRO_INIT, PROGRESS_PRO_PROCESSING,
+} from '../constants.js'
 
 const AGNES_API_KEY = import.meta.env.VITE_AGNES_API_KEY
 const AGNES_BASE = import.meta.env.VITE_AGNES_BASE_URL
@@ -108,7 +117,7 @@ export default function Chat({ character, onChangeCharacter }) {
           console.error('Failed to save messages:', err)
           dirtyRef.current = false
         })
-    }, 1500)
+    }, MESSAGE_PERSIST_DELAY_MS)
     return () => clearTimeout(persistTimer.current)
   }, [messages, ready])
 
@@ -133,7 +142,7 @@ export default function Chat({ character, onChangeCharacter }) {
   const processFiles = (files) => {
     const filesArr = Array.from(files).filter(f => f.type.startsWith('image/'))
     const currentLen = accessories.length
-    const canAdd = Math.max(0, 3 - currentLen)
+    const canAdd = Math.max(0, MAX_ACCESSORIES - currentLen)
     if (canAdd <= 0) return
     filesArr.slice(0, canAdd).forEach((file, i) => {
       const reader = new FileReader()
@@ -269,7 +278,7 @@ export default function Chat({ character, onChangeCharacter }) {
           ...(systemContent ? [{ role: 'system', content: systemContent }] : []),
           ...newMessages.map(m => ({ role: m.role, content: m.content })),
         ],
-        temperature: 0.8, max_tokens: 1024,
+        temperature: CHAT_TEMPERATURE, max_tokens: CHAT_MAX_TOKENS,
         stream: true,
       }
       const res = await fetch(`${AGNES_BASE}/chat/completions`, {
@@ -341,11 +350,11 @@ export default function Chat({ character, onChangeCharacter }) {
         }
 
         /* pattern 3: long descriptive text (no question marks = final output) */
-        if (!expandedPrompt && fullContent.length > 80 && !fullContent.includes('？') && !fullContent.includes('?')) {
+        if (!expandedPrompt && fullContent.length > PRO_MODE_MIN_CHARS && !fullContent.includes('？') && !fullContent.includes('?')) {
           const proMsgs = messages.filter(m => m.role === 'assistant')
           if (proMsgs.length >= 1) {
             let candidate = fullContent.replace(/^(好的|OK|好|來了|準備好了|以下是|這就為你).{0,20}[:：]/i, '')
-            if (candidate.length > 50) expandedPrompt = candidate.trim()
+            if (candidate.length > PRO_MODE_CANDIDATE_MIN) expandedPrompt = candidate.trim()
           }
         }
 
@@ -377,7 +386,7 @@ export default function Chat({ character, onChangeCharacter }) {
     const allRefs = [refUrl, outfitUrl, ...(accessoryUrls || [])].filter(Boolean)
     const hasMulti = allRefs.length > 1 || accessoryUrls?.length > 0
     const model = hasMulti ? 'agnes-image-2.0-flash' : AGNES_IMAGE_MODEL
-    const payload = { model, prompt: finalPrompt, size: '1024x1536' }
+    const payload = { model, prompt: finalPrompt, size: IMAGE_SIZE }
     const images = allRefs
     if (images.length > 0) {
       if (hasMulti) payload.tags = ['img2img']
@@ -401,9 +410,9 @@ export default function Chat({ character, onChangeCharacter }) {
   /* keep only the 30 most recent image records + their chat messages */
   const pruneOldImages = async () => {
     const all = await getAll('images')
-    if (all.length <= 30) return
+    if (all.length <= MAX_IMAGE_COUNT) return
     all.sort((a, b) => b.timestamp - a.timestamp)
-    const stale = all.slice(30)
+    const stale = all.slice(MAX_IMAGE_COUNT)
     const staleUrls = new Set(stale.map(s => s.imageUrl))
     for (const s of stale) await del('images', s.id)
     /* remove associated chat messages to free data URL memory */
@@ -551,7 +560,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
         { role: 'system', content: sysMsg },
         { role: 'user', content: userPrompt },
       ],
-      temperature: 1.0, max_tokens: 4096,
+      temperature: PROMPT_TEMPERATURE, max_tokens: PROMPT_MAX_TOKENS,
     }
     if (!useNvidia) body.chat_template_kwargs = { enable_thinking: true }
 
@@ -573,23 +582,23 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
 
     abortRef.current = new AbortController()
     const signal = abortRef.current.signal
-    setGenLoading(true); setGenStatus('✏️'); setGenProgress(5); setError('')
+      setGenLoading(true); setGenStatus('✏️'); setGenProgress(PROGRESS_INIT); setError('')
 
     try {
       const hasRef = !!character.refImageUrl
 
       /* step 1: AI expand with randomness */
-      setGenStatus('✏️'); setGenProgress(20)
+      setGenStatus('✏️'); setGenProgress(PROGRESS_EXPANDING)
       const expandedPrompt = await expandPrompt(promptText, signal, hasRef || accessories.length > 0)
       if (signal.aborted) return
-      setGenProgress(45)
+      setGenProgress(PROGRESS_EXPANDED)
 
       /* step 2: send expanded prompt to image API */
-      setGenStatus('🎨'); setGenProgress(50)
+      setGenStatus('🎨'); setGenProgress(PROGRESS_API_CALL)
       const finalPrompt = `${expandedPrompt}。高畫質、精細細節、寫實風格`
       const accessoryUrls = accessories.map(a => a.dataUrl)
       const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, accessoryUrls, signal, outfit?.dataUrl)
-      setGenProgress(95)
+      setGenProgress(PROGRESS_DONE)
       if (signal.aborted) return
 
       const label = '自訂'
@@ -624,7 +633,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
   const generateImageFromPrompt = async (expandedPrompt, label = '大師級作品') => {
     abortRef.current = new AbortController()
     const signal = abortRef.current.signal
-    setGenLoading(true); setGenStatus('🎨'); setGenProgress(10)
+    setGenLoading(true); setGenStatus('🎨'); setGenProgress(PROGRESS_PRO_INIT)
     const bodyDesc = buildBodyDesc(character)
     const refClause = character.refImageUrl
       ? `角色外貌保持不變（臉部、髮型、體型${outfit?.desc ? '' : '、服裝'}完全與參考圖一致）`
@@ -639,11 +648,11 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
     const finalPrompt = `${refClause}${refClause ? '，' : ''}${bodyDesc}${wearClause}，${expandedPrompt}。高畫質、精細細節、寫實風格`.replace(/^，/, '')
 
     try {
-      setGenProgress(30)
+      setGenProgress(PROGRESS_PRO_PROCESSING)
       const accessoryUrls = accessories.map(a => a.dataUrl)
       const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, accessoryUrls, signal, outfit?.dataUrl)
       if (signal.aborted) return
-      setGenProgress(95)
+      setGenProgress(PROGRESS_DONE)
 
       const imageMsg = {
         id: uid(), role: 'assistant', type: 'image',
@@ -867,7 +876,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
                 transition: 'all 0.2s',
               }}>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
-                📎 上傳穿戴物品（最多 3 張）{accessories.length > 0 && <span style={{ color: 'var(--pink)' }}>({accessories.length}/3)</span>}
+                📎 上傳穿戴物品（最多 {MAX_ACCESSORIES} 張）{accessories.length > 0 && <span style={{ color: 'var(--pink)' }}>({accessories.length}/{MAX_ACCESSORIES})</span>}
               </p>
 
               {/* per-item display: thumbnail + label + required desc input */}
@@ -914,9 +923,9 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
                 <p style={{ fontSize: '0.85rem', color: 'var(--pink)', textAlign: 'center', padding: '8px 0' }}>
                   📸 放開以上傳圖片
                 </p>
-              ) : accessories.length >= 3 ? (
+              ) : accessories.length >= MAX_ACCESSORIES ? (
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '4px 0' }}>
-                  已達上傳上限 (3/3)
+                  已達上傳上限 ({MAX_ACCESSORIES}/{MAX_ACCESSORIES})
                 </p>
               ) : (
                 <>

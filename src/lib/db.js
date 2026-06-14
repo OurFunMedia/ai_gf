@@ -1,14 +1,13 @@
-const DB_NAME = 'ai_gf'
-const REQUIRED_STORES = ['messages', 'images', 'settings']
+import { DB_NAME, DB_STORES, DB_OPEN_RETRIES } from '../constants.js'
 
-function openDb(retries = 3) {
+function openDb(retries = DB_OPEN_RETRIES) {
   return new Promise((resolve, reject) => {
     let version = 1
     const tryOpen = () => {
       const request = indexedDB.open(DB_NAME, version)
       request.onupgradeneeded = (e) => {
         const db = e.target.result
-        for (const name of REQUIRED_STORES) {
+        for (const name of DB_STORES) {
           if (!db.objectStoreNames.contains(name)) {
             db.createObjectStore(name, { keyPath: 'id' })
           }
@@ -16,7 +15,7 @@ function openDb(retries = 3) {
       }
       request.onsuccess = (e) => {
         const db = e.target.result
-        const missing = REQUIRED_STORES.filter(s => !db.objectStoreNames.contains(s))
+        const missing = DB_STORES.filter(s => !db.objectStoreNames.contains(s))
         if (missing.length > 0 && retries > 0) {
           /* stale database: stores missing at current version → bump version to force upgrade */
           db.close()
