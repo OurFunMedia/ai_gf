@@ -54,7 +54,6 @@ export default function Chat({ character, onChangeCharacter }) {
 
   /* image gen */
   const [imgMode, setImgMode] = useState(false)
-  const [selectedScene, setSelectedScene] = useState(null)
   const [customPrompt, setCustomPrompt] = useState('')
   const [genLoading, setGenLoading] = useState(false)
   const [genStatus, setGenStatus] = useState('')
@@ -605,11 +604,11 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
       setMessages(prev => [...prev, imageMsg, ...(promptMsg ? [promptMsg] : [])])
 
       /* persist to image history */
-      const record = { id: `img_${Date.now()}`, imageUrl: dataUrl, scene: selectedScene, prompt: promptText, timestamp: Date.now() }
+      const record = { id: `img_${Date.now()}`, imageUrl: dataUrl, prompt: promptText, timestamp: Date.now() }
       await put('images', record)
       await pruneOldImages()
 
-      setImgMode(false); setSelectedScene(null); setCustomPrompt(''); setAccessories([])
+      setImgMode(false); setCustomPrompt(''); setAccessories([])
       /* reset only data-URL reference (set via 修改這張圖), preserve external URLs */
       if (character.refImageUrl?.startsWith('data:')) {
         onChangeCharacter?.({...character, refImageUrl: ''})

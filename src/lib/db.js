@@ -32,46 +32,54 @@ function openDb(retries = 3) {
   })
 }
 
-export async function get(storeName, key) {
+async function withDb(storeName, mode, fn) {
   const db = await openDb()
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readonly')
+    const tx = db.transaction(storeName, mode)
     const store = tx.objectStore(storeName)
-    const request = store.get(key)
-    request.onsuccess = () => resolve(request.result ?? null)
-    request.onerror = () => reject(request.error)
+    let settled = false
+    const done = (err, val) => {
+      if (settled) return
+      settled = true
+      db.close()
+      if (err) reject(err)
+      else resolve(val)
+    }
+    tx.onerror = (e) => done(e.target.error)
+    tx.onabort = (e) => done(new Error('transaction aborted'))
+    tx.oncomplete = () => { if (!settled) done(null, undefined) }
+    try { fn(store, done) } catch (e) { done(e) }
+  })
+}
+
+export async function get(storeName, key) {
+  return withDb(storeName, 'readonly', (store, done) => {
+    const req = store.get(key)
+    req.onsuccess = () => done(null, req.result ?? null)
+    req.onerror = () => done(req.error)
   })
 }
 
 export async function getAll(storeName) {
-  const db = await openDb()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readonly')
-    const store = tx.objectStore(storeName)
-    const request = store.getAll()
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
+  return withDb(storeName, 'readonly', (store, done) => {
+    const req = store.getAll()
+    req.onsuccess = () => done(null, req.result)
+    req.onerror = () => done(req.error)
   })
 }
 
 export async function put(storeName, data) {
-  const db = await openDb()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readwrite')
-    const store = tx.objectStore(storeName)
-    const request = store.put(data)
-    request.onsuccess = () => resolve()
-    request.onerror = () => reject(request.error)
+  return withDb(storeName, 'readwrite', (store, done) => {
+    const req = store.put(data)
+    req.onsuccess = () => done(null)
+    req.onerror = () => done(req.error)
   })
 }
 
 export async function del(storeName, key) {
-  const db = await openDb()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readwrite')
-    const store = tx.objectStore(storeName)
-    const request = store.delete(key)
-    request.onsuccess = () => resolve()
-    request.onerror = () => reject(request.error)
+  return withDb(storeName, 'readwrite', (store, done) => {
+    const req = store.delete(key)
+    req.onsuccess = () => done(null)
+    req.onerror = () => done(req.error)
   })
 }
