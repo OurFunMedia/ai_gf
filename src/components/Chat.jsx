@@ -519,6 +519,8 @@ ${clothingRule}
 8. ✨ Quality: realistic skin texture, natural pores, fine wrinkles, subtle blemishes, natural skin oil sheen, real hair strands, realistic eye catchlight, natural shadows, photorealistic, 8K
 9. 🚫 ANTI-CG & ANTI-AI: no CGI, no 3D render, no illustration, no painting, no anime, no cartoon, no stylized art, NO AI plastic look, no wax skin, no porcelain face, no smooth fake perfection, no over-polished digital art look
 
+You MUST include the character's full body description (age, height, figure, bust, waist, hips) in the final prompt so the image model generates the correct body type.
+
 Style: ${style}${hasRef ? `
 
 REFERENCE PHOTO MODE: A reference photo will be provided. Your prompt MUST begin with: "KEEP: [face, hairstyle, body, clothing unchanged]. CHANGE: [background/scene completely to the new setting]." Then describe the scene as usual.` : ''}
