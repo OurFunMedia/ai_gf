@@ -549,11 +549,15 @@ REFERENCE PHOTO MODE: A reference photo will be provided. Your prompt MUST begin
 Output ONLY the expanded prompt. One paragraph. English. No explanations, no prefixes.`
     let apiResult = null
     try {
-      /* call Cloudflare Worker → Zen Free Model (CORS-safe) */
-      const res = await fetch(NVIDIA_WORKER_URL, {
+      /* try Agnes Chat API first (CORS-safe, same origin policy allows) */
+      const agnesRes = await fetch(`${AGNES_BASE}/chat/completions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${AGNES_API_KEY}`,
+        },
         body: JSON.stringify({
+          model: AGNES_CHAT_MODEL,
           messages: [
             { role: 'system', content: sysMsg },
             { role: 'user', content: userPrompt },
@@ -563,13 +567,37 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
         }),
         signal,
       })
-      if (res.ok) {
-        const data = await res.json()
-        const msg = data.choices?.[0]?.message
-        apiResult = (msg?.content || msg?.reasoning || '').trim()
+      if (agnesRes.ok) {
+        const data = await agnesRes.json()
+        apiResult = (data.choices?.[0]?.message?.content || '').trim()
       }
     } catch {
-      /* Worker or network error — fallback to client-side construction below */
+      /* Agnes API failed — try Worker fallback below */
+    }
+    if (!apiResult) {
+      try {
+        /* fallback: call Cloudflare Worker → Zen Free Model (CORS-safe) */
+        const res = await fetch(NVIDIA_WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              { role: 'system', content: sysMsg },
+              { role: 'user', content: userPrompt },
+            ],
+            temperature: PROMPT_TEMPERATURE,
+            max_tokens: PROMPT_MAX_TOKENS,
+          }),
+          signal,
+        })
+        if (res.ok) {
+          const data = await res.json()
+          const msg = data.choices?.[0]?.message
+          apiResult = (msg?.content || msg?.reasoning || '').trim()
+        }
+      } catch {
+        /* Worker or network error — fallback to client-side construction below */
+      }
     }
     if (apiResult) return apiResult
 
