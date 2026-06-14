@@ -8,7 +8,7 @@
 
 const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
 const MODEL = 'minimaxai/minimax-m3'
-const FETCH_TIMEOUT_MS = 3000
+const FETCH_TIMEOUT_MS = 10000
 
 export default {
   async fetch(req, env) {

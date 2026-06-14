@@ -524,6 +524,7 @@ The subject is "${character.name}".${charContext}
 2. Add reasonable story details around their input (what the character is doing, why they're there, the atmosphere).
 3. MUST look like a REAL photograph — absolutely NO: CG, 3D render, illustration, anime, cartoon, painting, fantasy, sci-fi, digital art, stylized, or any non-photorealistic style.
 4. STRICTLY FORBID: AI plastic look (AI膠圖) — no overly smooth skin, no porcelain face, no wax-like texture, no artificial perfection, no generic AI face. Must have natural skin imperfections, real human features, natural asymmetry, authentic texture.
+5. STRICTLY FORBID any animal ears or animal head accessories (rabbit ears, cat ears, fox ears, etc.) — human ears only, no fantasy headwear.
 
 If the user's input is vague (e.g. "random", "隨機", or ≤3 words), create a scene matching: ${sceneType}.
 
@@ -578,7 +579,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
       ? `KEEP: face, hairstyle, body${outfit?.desc ? '' : ', clothing'} unchanged. CHANGE: background/scene completely to the new setting. `
       : ''
     const wearList = accessories.filter(a => a.desc).map(a => `${a.label}=${a.desc}`).join(', ')
-    return `${refPrefix}${character.name} is ${userPrompt}. ${sceneType}. ${timeOfDay}, ${season}, ${weather}. ${weather === 'sunny' || weather === 'clear' || weather === 'golden haze' ? 'Natural lighting' : weather === 'night' || weather === 'midnight' || weather === 'deep night' ? 'Ambient artificial lighting' : 'Soft diffused lighting'}. ${style}. Color palette: ${colorPalette}. ${bodyInfo ? `Body: ${bodyInfo}. ` : ''}${wearList ? `Wearing accessories: ${wearList}. ` : ''}${styleExprs}. Camera: ${cameraAngle}. Realistic skin texture, natural imperfections, photorealistic, 8K. NO CGI, NO illustration, NO anime, NO AI plastic look.`
+    return `${refPrefix}${character.name} is ${userPrompt}. ${sceneType}. ${timeOfDay}, ${season}, ${weather}. ${weather === 'sunny' || weather === 'clear' || weather === 'golden haze' ? 'Natural lighting' : weather === 'night' || weather === 'midnight' || weather === 'deep night' ? 'Ambient artificial lighting' : 'Soft diffused lighting'}. ${style}. Color palette: ${colorPalette}. ${bodyInfo ? `Body: ${bodyInfo}. ` : ''}${wearList ? `Wearing accessories: ${wearList}. ` : ''}${styleExprs}. Camera: ${cameraAngle}. Realistic skin texture, natural imperfections, photorealistic, 8K. NO CGI, NO illustration, NO anime, NO AI plastic look. NO animal ears, NO fantasy head accessories.`
   }
 
   const generateImage = async (overridePrompt) => {
@@ -600,7 +601,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
 
       /* step 2: send expanded prompt to image API */
       setGenStatus('🎨'); setGenProgress(PROGRESS_API_CALL)
-      const finalPrompt = `${expandedPrompt}。高畫質、精細細節、寫實風格`
+      const finalPrompt = `${expandedPrompt}。高畫質、精細細節、寫實風格、無動物耳朵、無動物頭飾`
       const accessoryUrls = accessories.map(a => a.dataUrl)
       const dataUrl = await callImageAPI(finalPrompt, character.refImageUrl, accessoryUrls, signal, outfit?.dataUrl)
       setGenProgress(PROGRESS_DONE)
