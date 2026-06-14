@@ -15,7 +15,7 @@ const AGNES_BASE = import.meta.env.VITE_AGNES_BASE_URL
 const AGNES_CHAT_MODEL = import.meta.env.VITE_AGNES_CHAT_MODEL
 const AGNES_IMAGE_MODEL = import.meta.env.VITE_AGNES_IMAGE_MODEL
 
-const NVIDIA_WORKER_URL = import.meta.env.VITE_NVIDIA_WORKER_URL || 'https://ai-gf-nvidia-proxy.tobyyip-work.workers.dev'
+const NVIDIA_WORKER_URL = import.meta.env.VITE_NVIDIA_WORKER_URL || 'https://ai-gf-zen-proxy-production.tobyyip-work.workers.dev'
 
 const WELCOME = (name) => `嗨～我是${name}！今天過得怎麼樣呀？😊`
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
@@ -549,7 +549,7 @@ REFERENCE PHOTO MODE: A reference photo will be provided. Your prompt MUST begin
 Output ONLY the expanded prompt. One paragraph. English. No explanations, no prefixes.`
     let apiResult = null
     try {
-      /* call Cloudflare Worker → NVIDIA DeepSeek V4 Flash (CORS-safe) */
+      /* call Cloudflare Worker → Zen Free Model (CORS-safe) */
       const res = await fetch(NVIDIA_WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -565,7 +565,8 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
       })
       if (res.ok) {
         const data = await res.json()
-        apiResult = data.choices?.[0]?.message?.content?.trim()
+        const msg = data.choices?.[0]?.message
+        apiResult = (msg?.content || msg?.reasoning || '').trim()
       }
     } catch {
       /* Worker or network error — fallback to client-side construction below */
