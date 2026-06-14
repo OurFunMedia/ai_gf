@@ -1,0 +1,89 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "♡ 小艾 ai gf" [level=1] [ref=e5]:
+      - generic [ref=e6]: ♡
+      - text: 小艾
+      - generic [ref=e7]: ai gf
+    - navigation [ref=e8]:
+      - button "💬 聊天" [ref=e9] [cursor=pointer]
+      - button "🖼️ 相簿" [ref=e10] [cursor=pointer]
+      - button "🎀 設定" [ref=e11] [cursor=pointer]
+  - main [ref=e12]:
+    - generic [ref=e25]:
+      - heading "🎀 角色設定" [level=2] [ref=e26]
+      - generic [ref=e27]:
+        - generic [ref=e28]: 角色名稱
+        - textbox "例如：小艾" [ref=e29]: 小艾
+      - generic [ref=e30]:
+        - generic [ref=e31]: 個性設定（system prompt）
+        - textbox "描述角色的個性、語氣、說話方式..." [ref=e32]: 你是小艾，一位溫柔體貼、活潑可愛的台灣女孩。你說話帶有台灣用語，喜歡用「唷」、「喔」、「耶」等語助詞。你很關心使用者，會主動問候、分享生活趣事。你喜歡畫畫、看夕陽、喝奶茶。在對話中展現真實的情感，偶爾會撒嬌，但不會過度。
+      - generic [ref=e33]:
+        - generic [ref=e34]: 角色外貌參考圖
+        - paragraph [ref=e35]: 上傳到免費圖床（如 imgbb、postimages）後貼上圖片網址
+        - textbox "https://i.imgur.com/your-image.png" [ref=e36]: https://i.ibb.co/SXY76hf3/ai-gf-Gemini.png
+        - generic [ref=e103]:
+          - img "reference" [ref=e104]
+          - button "清除參考圖" [ref=e105] [cursor=pointer]
+      - heading "📏 體型參數" [level=3] [ref=e37]
+      - generic [ref=e38]:
+        - generic [ref=e39]: 🎂 年紀
+        - spinbutton [ref=e40]: "22"
+      - generic [ref=e142]:
+        - generic [ref=e143]: 📏 身高
+        - generic [ref=e144]:
+          - button "矮細" [ref=e145] [cursor=pointer]
+          - button "中等" [ref=e146] [cursor=pointer]
+          - button "高挑" [ref=e147] [cursor=pointer]
+      - generic [ref=e148]:
+        - generic [ref=e149]: 💃 身材
+        - generic [ref=e150]:
+          - button "纖瘦" [ref=e151] [cursor=pointer]
+          - button "勻稱" [ref=e152] [cursor=pointer]
+          - button "豐滿" [ref=e153] [cursor=pointer]
+          - button "運動型" [ref=e154] [cursor=pointer]
+          - button "沙漏" [ref=e155] [cursor=pointer]
+          - button "微肉" [ref=e156] [cursor=pointer]
+      - generic [ref=e157]:
+        - generic [ref=e158]: 🍒 胸圍
+        - generic [ref=e159]:
+          - button "微乳" [ref=e160] [cursor=pointer]
+          - button "中等" [ref=e161] [cursor=pointer]
+          - button "明顯" [ref=e162] [cursor=pointer]
+          - button "暴乳" [ref=e163] [cursor=pointer]
+      - generic [ref=e164]:
+        - generic [ref=e165]: 🧵 腰圍
+        - generic [ref=e166]:
+          - button "細" [ref=e167] [cursor=pointer]
+          - button "中" [ref=e168] [cursor=pointer]
+          - button "寬" [ref=e169] [cursor=pointer]
+      - generic [ref=e69]:
+        - generic [ref=e70]: 🍑 臀圍
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - generic [ref=e73]: 寬度
+            - generic [ref=e74]:
+              - button "窄" [ref=e75] [cursor=pointer]
+              - button "中" [ref=e76] [cursor=pointer]
+              - button "寬" [ref=e77] [cursor=pointer]
+          - generic [ref=e78]:
+            - generic [ref=e79]: 形狀
+            - generic [ref=e80]:
+              - button "平" [ref=e81] [cursor=pointer]
+              - button "翹" [ref=e82] [cursor=pointer]
+      - generic [ref=e170]:
+        - generic [ref=e171]: 🎭 風格
+        - generic [ref=e172]:
+          - button "清純" [ref=e173] [cursor=pointer]
+          - button "性感" [ref=e174] [cursor=pointer]
+          - button "可愛" [ref=e175] [cursor=pointer]
+          - button "優雅" [ref=e176] [cursor=pointer]
+          - button "鄰家" [ref=e177] [cursor=pointer]
+      - separator [ref=e91]
+      - heading "⚙️ 其他設定" [level=3] [ref=e92]
+      - generic [ref=e93]:
+        - generic [ref=e95] [cursor=pointer]: 顯示生成提示詞
+        - paragraph [ref=e98]: 生成圖片後自動在圖片下方顯示使用的提示詞
+      - button "儲存設定" [active] [ref=e99] [cursor=pointer]
+      - separator [ref=e100]
+      - heading "⚠️ 危險區域" [level=3] [ref=e101]
+      - button "🗑️ 清除所有聊天記錄" [ref=e102] [cursor=pointer]

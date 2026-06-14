@@ -1,0 +1,3 @@
+[     346ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5175/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:21606
+[  111528ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5175/ai_gf/src/components/Chat.jsx?t=1781288573506:0
+[  111529ms] [ERROR] [vite] Failed to reload /src/components/Chat.jsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5175/ai_gf/@vite/client:881

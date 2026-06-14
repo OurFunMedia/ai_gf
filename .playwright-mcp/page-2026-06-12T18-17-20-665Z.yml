@@ -1,0 +1,41 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "♡ 小艾 ai gf" [level=1] [ref=e5]:
+      - generic [ref=e6]: ♡
+      - text: 小艾
+      - generic [ref=e7]: ai gf
+    - navigation [ref=e8]:
+      - button "💬 聊天" [ref=e9] [cursor=pointer]
+      - button "🖼️ 相簿" [ref=e10] [cursor=pointer]
+      - button "🎀 設定" [ref=e11] [cursor=pointer]
+  - main [ref=e12]:
+    - generic [ref=e14]:
+      - generic [ref=e16]:
+        - generic [ref=e17]: ♡
+        - generic [ref=e18]:
+          - button "✕" [ref=e19] [cursor=pointer]
+          - text: 嗨～我是小艾！今天過得怎麼樣呀？😊
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - text: ⚠️ 未設定角色外貌參考圖，生成的角色臉部可能不一致。 到
+          - strong [ref=e26]: 設定
+          - text: 頁面上傳參考圖可保持角色穩定性。
+        - generic [ref=e27]:
+          - button "📋 情境場景" [ref=e28] [cursor=pointer]
+          - button "🌟 專業大師級" [ref=e29] [cursor=pointer]
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - paragraph [ref=e32]: 👗 服裝暫存（上傳 1 張衣服照片，給「虛擬女友」換新裝）
+            - button "+ 上傳服裝照片" [ref=e33] [cursor=pointer]
+            - text: 或拖曳圖片到此
+          - generic [ref=e34]:
+            - paragraph [ref=e35]: 📎 上傳穿戴物品（最多 3 張）
+            - button "+ 選擇圖片" [ref=e36] [cursor=pointer]
+            - text: 或拖曳圖片到此
+        - generic [ref=e37]:
+          - paragraph [ref=e38]: 📋 情境場景模式
+          - paragraph [ref=e39]: 在對話中直接輸入場景描述（例如：「雪山頂看日出」）， 或輸入「隨機 / random」讓 AI 即興抽卡！
+      - generic [ref=e20]:
+        - button "📸" [active] [ref=e21] [cursor=pointer]
+        - textbox "輸入場景描述，如：雪山頂看日出" [ref=e40]
+        - button "送出" [disabled] [ref=e23]

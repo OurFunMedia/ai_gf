@@ -1,0 +1,24 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "♡ 小艾 ai gf" [level=1] [ref=e5]:
+      - generic [ref=e6]: ♡
+      - text: 小艾
+      - generic [ref=e7]: ai gf
+    - navigation [ref=e8]:
+      - button "💬 聊天" [ref=e9] [cursor=pointer]
+      - button "🖼️ 相簿" [ref=e10] [cursor=pointer]
+      - button "🎀 設定" [ref=e11] [cursor=pointer]
+  - main [ref=e12]:
+    - generic [ref=e168]:
+      - generic [ref=e172]:
+        - button "✕" [ref=e173] [cursor=pointer]
+        - text: 嗨～我是小艾！今天過得怎麼樣呀？😊
+      - generic [ref=e193]:
+        - generic [ref=e197]:
+          - generic [ref=e198]: ✏️ AI 擴寫提示中...
+          - generic [ref=e199]: 20%
+        - button "✕ 取消" [ref=e200] [cursor=pointer]
+      - generic [ref=e174]:
+        - button "📸" [ref=e175] [cursor=pointer]
+        - textbox "輸入場景描述，如：雪山頂看日出" [disabled] [ref=e192]
+        - button "送出" [disabled] [ref=e177]

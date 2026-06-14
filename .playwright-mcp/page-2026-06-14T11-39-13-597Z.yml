@@ -1,0 +1,21 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "♡ 虛擬伴侶 ai gf" [level=1] [ref=e5]:
+      - generic [ref=e6]: ♡
+      - text: 虛擬伴侶
+      - generic [ref=e7]: ai gf
+    - navigation [ref=e8]:
+      - button "💬 聊天" [ref=e9] [cursor=pointer]
+      - button "🖼️ 相簿" [ref=e10] [cursor=pointer]
+      - button "🎀 設定" [ref=e11] [cursor=pointer]
+  - main [ref=e12]:
+    - generic [ref=e14]:
+      - generic [ref=e16]:
+        - generic [ref=e17]: ♡
+        - generic [ref=e18]:
+          - button "✕" [ref=e19] [cursor=pointer]
+          - text: 嗨～我是虛擬伴侶！今天過得怎麼樣呀？😊
+      - generic [ref=e20]:
+        - button "📸" [ref=e21] [cursor=pointer]
+        - textbox "跟虛擬伴侶說說話..." [active] [ref=e22]: 你好
+        - button "送出" [ref=e23] [cursor=pointer]

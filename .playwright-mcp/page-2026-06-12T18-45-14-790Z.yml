@@ -1,0 +1,34 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "♡ 小艾 ai gf" [level=1] [ref=e5]:
+      - generic [ref=e6]: ♡
+      - text: 小艾
+      - generic [ref=e7]: ai gf
+    - navigation [ref=e8]:
+      - button "💬 聊天" [ref=e9] [cursor=pointer]
+      - button "🖼️ 相簿" [ref=e10] [cursor=pointer]
+      - button "🎀 設定" [ref=e11] [cursor=pointer]
+  - main [ref=e12]:
+    - generic [ref=e168]:
+      - generic [ref=e169]:
+        - generic [ref=e172]:
+          - button "✕" [ref=e173] [cursor=pointer]
+          - text: 嗨～我是小艾！今天過得怎麼樣呀？😊
+        - generic [ref=e203]:
+          - button "✕" [ref=e204] [cursor=pointer]
+          - paragraph [ref=e205]: 📸 生成了「自訂」的圖片
+          - generic [ref=e206]:
+            - button "⬇️ 下載" [ref=e207] [cursor=pointer]
+            - button "📌 修改這張圖" [ref=e208] [cursor=pointer]
+        - generic [ref=e211]:
+          - button "✕" [ref=e212] [cursor=pointer]
+          - paragraph [ref=e213]: "💡 KEEP: face, hairstyle, body, clothing unchanged. CHANGE: background/scene completely to the new setting below. The environment is an abandoned, overgrown industrial glassblowing workshop reclaimed by nature, where rusted machinery is partially draped in ivy and blooming wildflowers, with warm amber sunlight streaming through cracked skylights and illuminating floating dust motes. 小艾 stands casually in the center, tilting her head slightly to the side while gently running her fingers through her wind-swept hair, weight shifted onto one leg to naturally accentuate her medium height, proportionate figure, medium bust, slim waist, and perky butt in a cute, relaxed posture. The atmosphere is sunny and crisp, set in late morning during late autumn, where the angled golden-hour rays cast soft, elongated shadows and bathe the dusty space in a nostalgic, sun-drenched glow. Rendered in a muted vintage tone and faded memory palette, the composition captures a gentle smile with a hint of quiet curiosity, framed from a three-quarter angle with natural candid composition. The image features ultra-detailed skin texture, natural skin pores, realistic eye catchlight, natural hair strands, photorealistic rendering, and 8K resolution, delivered in a cinematic realism style with a natural everyday aesthetic."
+      - generic [ref=e230]:
+        - generic [ref=e234]:
+          - generic [ref=e235]: ✏️ AI 擴寫提示中...
+          - generic [ref=e236]: 20%
+        - button "✕ 取消" [ref=e237] [cursor=pointer]
+      - generic [ref=e174]:
+        - button "📸" [ref=e175] [cursor=pointer]
+        - textbox "輸入場景描述，如：雪山頂看日出" [disabled] [ref=e229]
+        - button "送出" [disabled] [ref=e177]

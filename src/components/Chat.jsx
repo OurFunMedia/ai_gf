@@ -390,9 +390,7 @@ export default function Chat({ character, onChangeCharacter }) {
     const images = allRefs
     if (images.length > 0) {
       if (hasMulti) payload.tags = ['img2img']
-      payload.extra_body = { image: images, response_format: 'b64_json' }
-    } else {
-      payload.response_format = 'b64_json'
+      payload.extra_body = { image: images }
     }
     const res = await fetch(`${AGNES_BASE}/images/generations`, {
       method: 'POST',
@@ -402,9 +400,18 @@ export default function Chat({ character, onChangeCharacter }) {
     })
     if (!res.ok) throw new Error(`API error: ${res.status}`)
     const data = await res.json()
-    const b64 = data.data?.[0]?.b64_json
-    if (!b64) throw new Error('No image returned')
-    return `data:image/png;base64,${b64}`
+    const imageUrl = data.data?.[0]?.url
+    if (!imageUrl) throw new Error('No image returned')
+    /* fetch the CDN-hosted image and convert to base64 data URL */
+    const imgRes = await fetch(imageUrl, { signal })
+    if (!imgRes.ok) throw new Error('Failed to fetch generated image')
+    const blob = await imgRes.blob()
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result)
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
   }
 
   /* keep only the 30 most recent image records + their chat messages */
@@ -685,7 +692,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
     if (genLoading) cancelGen()
     setImgMode(!imgMode)
     setError('')
-    if (!imgMode) { setSelectedScene(null); setCustomPrompt(''); setAccessories([]) }
+    if (!imgMode) { setCustomPrompt(''); setAccessories([]) }
   }
 
   return (
@@ -701,10 +708,11 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
             <div className="message-bubble" style={{ position: 'relative', ...(msg.type === 'image' ? { width: '50%' } : {}) }}>
               <button onClick={() => deleteMessage(msg.id)}
                 style={{
-                  position: 'absolute', top: 2, right: 4,
+                  position: 'absolute', top: -2, right: -2,
                   background: 'none', border: 'none', color: 'var(--text-muted)',
-                  fontSize: '0.7rem', cursor: 'pointer', opacity: 0.3,
-                  lineHeight: 1, padding: '2px 4px', zIndex: 1,
+                  fontSize: '0.85rem', cursor: 'pointer', opacity: 0.35,
+                  width: 44, height: 44, display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', zIndex: 1,
                 }}
                 title="刪除訊息">✕</button>
               {msg.type === 'image' ? (

@@ -1,0 +1,23 @@
+[     448ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:21606
+[   61071ms] ReferenceError: setSelectedScene is not defined
+    at toggleImgMode (http://localhost:5173/ai_gf/src/components/Chat.jsx:650:7)
+    at HTMLUnknownElement.callCallback2 (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:3678:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:3703:24)
+    at invokeGuardedCallback (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:3737:39)
+    at invokeGuardedCallbackAndCatchFirstError (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:3740:33)
+    at executeDispatch (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:7044:11)
+    at processDispatchQueueItemsInOrder (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:7064:15)
+    at processDispatchQueue (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:7073:13)
+    at dispatchEventsForPlugins (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:7081:11)
+    at http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:7204:20
+[   61071ms] ReferenceError: setSelectedScene is not defined
+    at toggleImgMode (http://localhost:5173/ai_gf/src/components/Chat.jsx:650:7)
+    at HTMLUnknownElement.callCallback2 (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:3678:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:3703:24)
+    at invokeGuardedCallback (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:3737:39)
+    at invokeGuardedCallbackAndCatchFirstError (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:3740:33)
+    at executeDispatch (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:7044:11)
+    at processDispatchQueueItemsInOrder (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:7064:15)
+    at processDispatchQueue (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:7073:13)
+    at dispatchEventsForPlugins (http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:7081:11)
+    at http://localhost:5173/ai_gf/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=b148c9ac:7204:20

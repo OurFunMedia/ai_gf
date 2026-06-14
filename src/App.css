@@ -190,7 +190,7 @@ input.body-age-input { width: 80px; padding: 8px 12px; font-size: 0.9rem; }
   .chat-input { font-size: 1rem; padding: 14px 16px; }
   .chat-send { font-size: 1rem; padding: 14px 20px; min-height: 48px; }
   .chat-input-area { gap: 6px; }
-  .scene-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .scene-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .scene-btn { font-size: 0.8rem; padding: 12px 6px; min-height: 52px; }
   .scene-btn .scene-icon { font-size: 1.2rem; }
   /* 手機版：設定頁面滿寬，選項按鈕放大方便點擊 */
@@ -203,7 +203,7 @@ input.body-age-input { width: 80px; padding: 8px 12px; font-size: 0.9rem; }
   .album-date { font-size: 0.75rem; }
   .album-prompt { font-size: 0.8rem; }
   .ref-preview { width: 100px; height: 100px; }
-  .chat-container .tab { flex: none; font-size: 0.9rem; padding: 6px 0; min-width: 36px; min-height: 36px; width: 36px; }
+  .chat-container .tab { flex: none; font-size: 0.9rem; padding: 6px 0; min-width: 44px; min-height: 44px; width: 44px; }
 }
 
 /* ===== Toast 提示（儲存成功短暫彈出） ===== */

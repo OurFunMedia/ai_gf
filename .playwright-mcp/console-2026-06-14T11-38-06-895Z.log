@@ -1,0 +1,11 @@
+[  173552ms] ReferenceError: setSelectedScene is not defined
+    at nt (https://ourfunmedia.github.io/ai_gf/assets/index-Dtsni8Wb.js:80:2347)
+    at Object.Pa (https://ourfunmedia.github.io/ai_gf/assets/vendor-BdZgHC1P.js:29:9828)
+    at za (https://ourfunmedia.github.io/ai_gf/assets/vendor-BdZgHC1P.js:29:9982)
+    at Ta (https://ourfunmedia.github.io/ai_gf/assets/vendor-BdZgHC1P.js:29:10039)
+    at Do (https://ourfunmedia.github.io/ai_gf/assets/vendor-BdZgHC1P.js:29:31419)
+    at Oo (https://ourfunmedia.github.io/ai_gf/assets/vendor-BdZgHC1P.js:29:31836)
+    at https://ourfunmedia.github.io/ai_gf/assets/vendor-BdZgHC1P.js:29:36767
+    at ai (https://ourfunmedia.github.io/ai_gf/assets/vendor-BdZgHC1P.js:32:37013)
+    at Vi (https://ourfunmedia.github.io/ai_gf/assets/vendor-BdZgHC1P.js:29:8964)
+    at au (https://ourfunmedia.github.io/ai_gf/assets/vendor-BdZgHC1P.js:29:33128)

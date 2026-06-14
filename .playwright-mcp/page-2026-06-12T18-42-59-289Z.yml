@@ -1,0 +1,19 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "♡ 小艾 ai gf" [level=1] [ref=e5]:
+      - generic [ref=e6]: ♡
+      - text: 小艾
+      - generic [ref=e7]: ai gf
+    - navigation [ref=e8]:
+      - button "💬 聊天" [active] [ref=e9] [cursor=pointer]
+      - button "🖼️ 相簿" [ref=e10] [cursor=pointer]
+      - button "🎀 設定" [ref=e11] [cursor=pointer]
+  - main [ref=e12]:
+    - generic [ref=e168]:
+      - generic [ref=e172]:
+        - button "✕" [ref=e173] [cursor=pointer]
+        - text: 嗨～我是小艾！今天過得怎麼樣呀？😊
+      - generic [ref=e174]:
+        - button "📸" [ref=e175] [cursor=pointer]
+        - textbox "跟小艾說說話..." [ref=e176]
+        - button "送出" [disabled] [ref=e177]
