@@ -6,6 +6,10 @@ const AGNES_BASE = import.meta.env.VITE_AGNES_BASE_URL
 const AGNES_CHAT_MODEL = import.meta.env.VITE_AGNES_CHAT_MODEL
 const AGNES_IMAGE_MODEL = import.meta.env.VITE_AGNES_IMAGE_MODEL
 
+const NVIDIA_API_KEY = import.meta.env.VITE_NVIDIA_API_KEY
+const NVIDIA_BASE = import.meta.env.VITE_NVIDIA_BASE_URL
+const NVIDIA_CHAT_MODEL = import.meta.env.VITE_NVIDIA_CHAT_MODEL
+
 const WELCOME = (name) => `嗨～我是${name}！今天過得怎麼樣呀？😊`
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
 
@@ -517,18 +521,24 @@ IMPORTANT — A reference photo of the character will be provided to the image m
 Output ONLY the expanded English prompt. One paragraph. No explanations, no prefixes, no line breaks.
 
 Important: Rule 1 (clothing) is final. Ignore any "keep clothing unchanged" in the user's message — rule 1 takes precedence.`
-    const res = await fetch(`${AGNES_BASE}/chat/completions`, {
+    const useNvidia = !!NVIDIA_API_KEY
+    const baseUrl = useNvidia ? NVIDIA_BASE : AGNES_BASE
+    const model = useNvidia ? NVIDIA_CHAT_MODEL : AGNES_CHAT_MODEL
+    const apiKey = useNvidia ? NVIDIA_API_KEY : AGNES_API_KEY
+    const body = {
+      model,
+      messages: [
+        { role: 'system', content: sysMsg },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 1.0, max_tokens: 4096,
+    }
+    if (!useNvidia) body.chat_template_kwargs = { enable_thinking: true }
+
+    const res = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${AGNES_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: AGNES_CHAT_MODEL,
-        messages: [
-          { role: 'system', content: sysMsg },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 1.0, max_tokens: 4096,
-        chat_template_kwargs: { enable_thinking: true },
-      }),
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
       signal,
     })
     if (!res.ok) return userPrompt
