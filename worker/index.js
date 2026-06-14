@@ -4,13 +4,37 @@
  * 環境變數（Cloudflare Secrets）：
  *   NVIDIA_API_KEY    — NVIDIA NIM API key
  *   ALLOWED_ORIGIN    — 前端 origin（例如 https://ourfunmedia.github.io）
+ *
+ * 定時觸發：每 5 分鐘 cron warmup，避免冷啟動。
  */
 
 const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
 const MODEL = 'deepseek-ai/deepseek-v4-flash'
 const FETCH_TIMEOUT_MS = 8000
 
+/* shared warmup: keeps the Worker isolate + NVIDIA endpoint alive */
+async function warmup(env) {
+  const key = env.NVIDIA_API_KEY || globalThis.NVIDIA_API_KEY || ''
+  if (!key) return
+  try {
+    await fetch(NVIDIA_URL, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 1,
+        temperature: 0,
+      }),
+      signal: AbortSignal.timeout(15000),
+    })
+  } catch {
+    /* warmup failure is non-critical — ignore */
+  }
+}
+
 export default {
+  /* CORS proxy for browser — main request handler */
   async fetch(req, env) {
     const NVIDIA_API_KEY = env.NVIDIA_API_KEY || globalThis.NVIDIA_API_KEY || ''
     const ALLOWED_ORIGIN = env.ALLOWED_ORIGIN || globalThis.ALLOWED_ORIGIN || ''
@@ -46,7 +70,7 @@ export default {
       })
     }
 
-    /* do NOT send top_p — causes NVIDIA V1 endpoint to hang */
+    /* do NOT send top_p — known to cause NVIDIA V1 endpoint to hang */
     const nvidiaPayload = {
       model: MODEL,
       messages: body.messages,
@@ -89,5 +113,10 @@ export default {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+  },
+
+  /* cron warmup — keeps Worker and NVIDIA endpoint alive */
+  async scheduled(event, env) {
+    await warmup(env)
   },
 }

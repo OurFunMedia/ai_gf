@@ -4,3 +4,6 @@ compatibility_date = "2025-01-01"
 
 [env.production]
 vars = { ALLOWED_ORIGIN = "https://ourfunmedia.github.io" }
+
+[env.production.triggers]
+crons = ["*/5 * * * *"]
