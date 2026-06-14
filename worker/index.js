@@ -9,8 +9,8 @@
  */
 
 const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
-const MODEL = 'deepseek-ai/deepseek-v4-flash'
-const FETCH_TIMEOUT_MS = 8000
+const MODEL = 'nvidia/nemotron-3-nano-30b-a3b'
+const FETCH_TIMEOUT_MS = 10000
 
 /* shared warmup: keeps the Worker isolate + NVIDIA endpoint alive */
 async function warmup(env) {
@@ -26,7 +26,7 @@ async function warmup(env) {
         max_tokens: 1,
         temperature: 0,
       }),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(20000),
     })
   } catch {
     /* warmup failure is non-critical — ignore */
