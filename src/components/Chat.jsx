@@ -387,8 +387,12 @@ export default function Chat({ character, onChangeCharacter }) {
     const payload = { model, prompt: finalPrompt, size: IMAGE_SIZE }
     const images = allRefs
     if (images.length > 0) {
+      /* image-to-image: response_format inside extra_body */
       if (hasMulti) payload.tags = ['img2img']
-      payload.extra_body = { image: images }
+      payload.extra_body = { image: images, response_format: 'b64_json' }
+    } else {
+      /* text-to-image only: top-level return_base64 */
+      payload.return_base64 = true
     }
     const res = await fetch(`${AGNES_BASE}/images/generations`, {
       method: 'POST',
@@ -398,6 +402,10 @@ export default function Chat({ character, onChangeCharacter }) {
     })
     if (!res.ok) throw new Error(`API error: ${res.status}`)
     const data = await res.json()
+    /* b64_json from either i2i (extra_body.response_format) or t2i (return_base64) */
+    const b64 = data.data?.[0]?.b64_json
+    if (b64) return `data:image/png;base64,${b64}`
+    /* fallback: URL (CDN — may have SSL issues) */
     const imageUrl = data.data?.[0]?.url
     if (!imageUrl) throw new Error('No image returned')
     return imageUrl
