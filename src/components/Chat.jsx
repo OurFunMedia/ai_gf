@@ -19,6 +19,8 @@ const AGNES_IMAGE_MODEL = import.meta.env.VITE_AGNES_IMAGE_MODEL
 const NVIDIA_API_KEY = import.meta.env.VITE_NVIDIA_API_KEY
 const NVIDIA_BASE = 'https://integrate.api.nvidia.com/v1'
 const NVIDIA_CHAT_MODEL = 'minimaxai/minimax-m2.7'
+/* CORS proxy worker — NVIDIA NIM 不允許瀏覽器直連，需經 Cloudflare Worker */
+const NVIDIA_PROXY_URL = 'https://ai-gf-nvidia-proxy.tobyyip-work.workers.dev'
 
 const NVIDIA_WORKER_URL = import.meta.env.VITE_NVIDIA_WORKER_URL || 'https://ai-gf-zen-proxy-production.tobyyip-work.workers.dev'
 
@@ -284,9 +286,9 @@ export default function Chat({ character, onChangeCharacter }) {
         temperature: CHAT_TEMPERATURE, max_tokens: CHAT_MAX_TOKENS,
         stream: true,
       }
-      const res = await fetch(`${NVIDIA_BASE}/chat/completions`, {
+      const res = await fetch(`${NVIDIA_PROXY_URL}`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${NVIDIA_API_KEY}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
         signal: abortRef.current.signal,
       })
@@ -547,13 +549,10 @@ You MUST include the character's full body description (age, height, figure, bus
 Output ONLY the expanded prompt. One paragraph. English. No explanations, no prefixes.`
       let apiResult = null
     try {
-      /* try NVIDIA NIM chat first (CORS-safe) */
-      const nvidiaRes = await fetch(`${NVIDIA_BASE}/chat/completions`, {
+      /* try NVIDIA NIM via CORS proxy first */
+      const nvidiaRes = await fetch(`${NVIDIA_PROXY_URL}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${NVIDIA_API_KEY}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: NVIDIA_CHAT_MODEL,
           messages: [
