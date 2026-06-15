@@ -1,9 +1,7 @@
 name = "ai-gf-nvidia-proxy"
 main = "index.js"
-compatibility_date = "2025-01-01"
-
-[env.production]
-vars = { ALLOWED_ORIGIN = "https://ourfunmedia.github.io" }
+compatibility_date = "2026-06-14"
+compatibility_flags = ["nodejs_compat"]
 
 [env.production.triggers]
 crons = ["*/5 * * * *"]

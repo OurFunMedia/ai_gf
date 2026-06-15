@@ -1,48 +1,41 @@
 /**
- * ai-gf NVIDIA DeepSeek V4 Flash proxy — Cloudflare Worker
+ * ai-gf NVIDIA NIM CORS Proxy — Cloudflare Worker
+ *
+ * 透明代理：前端 → Worker（CORS proxy）→ NVIDIA NIM API
+ * 支援 streaming SSE 與非 streaming 請求。
  *
  * 環境變數（Cloudflare Secrets）：
- *   NVIDIA_API_KEY    — NVIDIA NIM API key
- *   ALLOWED_ORIGIN    — 前端 origin（例如 https://ourfunmedia.github.io）
- *
- * 定時觸發：每 5 分鐘 cron warmup，避免冷啟動。
+ *   NVIDIA_API_KEY — NVIDIA NIM API key（沒設則從前端送 Authorization）
+ *   ALLOWED_ORIGIN — 限制來源（留空 = 接受任何 origin）
  */
 
-const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
-const MODEL = 'nvidia/nemotron-3-nano-30b-a3b'
-const FETCH_TIMEOUT_MS = 10000
+const NVIDIA_BASE = 'https://integrate.api.nvidia.com/v1'
+const FETCH_TIMEOUT_MS = 120_000
 
-/* shared warmup: keeps the Worker isolate + NVIDIA endpoint alive */
+/* shared warmup: keeps the Worker isolate alive */
 async function warmup(env) {
-  const key = env.NVIDIA_API_KEY || globalThis.NVIDIA_API_KEY || ''
+  const key = env.NVIDIA_API_KEY || ''
   if (!key) return
   try {
-    await fetch(NVIDIA_URL, {
+    await fetch(`${NVIDIA_BASE}/chat/completions`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: MODEL,
+        model: 'minimaxai/minimax-m2.7',
         messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 1,
-        temperature: 0,
+        max_tokens: 1, temperature: 0,
       }),
       signal: AbortSignal.timeout(20000),
     })
-  } catch {
-    /* warmup failure is non-critical — ignore */
-  }
+  } catch { /* non-critical */ }
 }
 
 export default {
-  /* CORS proxy for browser — main request handler */
   async fetch(req, env) {
-    const NVIDIA_API_KEY = env.NVIDIA_API_KEY || globalThis.NVIDIA_API_KEY || ''
-    const ALLOWED_ORIGIN = env.ALLOWED_ORIGIN || globalThis.ALLOWED_ORIGIN || ''
     const origin = req.headers.get('Origin') || ''
-    const allowedOrigin = ALLOWED_ORIGIN || origin
-    const corsOrigin = (!origin || origin === 'null' || origin === allowedOrigin) ? (origin || '*') : 'null'
+    /* 回傳請求的 origin（不限制）— API key 已在前端 JS bundle 中 */
     const corsHeaders = {
-      'Access-Control-Allow-Origin': corsOrigin,
+      'Access-Control-Allow-Origin': origin || '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Max-Age': '86400',
@@ -56,47 +49,66 @@ export default {
         status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
 
-    if (!NVIDIA_API_KEY)
-      return new Response(JSON.stringify({ error: 'NVIDIA_API_KEY not configured' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-
     let body
-    try {
-      body = await req.json()
-    } catch (e) {
-      return new Response(JSON.stringify({ error: 'Invalid JSON', detail: e.message }), {
+    try { body = await req.json() }
+    catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    /* do NOT send top_p — known to cause NVIDIA V1 endpoint to hang */
+    const { model, messages, temperature, max_tokens, stream } = body
+    if (!model || !messages)
+      return new Response(JSON.stringify({ error: 'model and messages required' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+
+    /* 優先使用 worker env 的 API key，沒設才 fallback 到前端送來的 */
+    const serverKey = env.NVIDIA_API_KEY || globalThis.NVIDIA_API_KEY || ''
+    const authHeader = serverKey
+      ? `Bearer ${serverKey}`
+      : (req.headers.get('Authorization') || '')
+
     const nvidiaPayload = {
-      model: MODEL,
-      messages: body.messages,
-      temperature: body.temperature ?? 1.0,
-      max_tokens: body.max_tokens ?? 4096,
+      model,
+      messages,
+      temperature: temperature ?? 1.0,
+      max_tokens: max_tokens ?? 4096,
+      stream: stream ?? false,
     }
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
     try {
-      const nvidiaRes = await fetch(NVIDIA_URL, {
+      const nvidiaRes = await fetch(`${NVIDIA_BASE}/chat/completions`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${NVIDIA_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json', ...(authHeader ? { 'Authorization': authHeader } : {}) },
         body: JSON.stringify(nvidiaPayload),
         signal: controller.signal,
       })
       clearTimeout(timeout)
 
-      const nvidiaText = await nvidiaRes.text()
+      if (stream) {
+        /* SSE streaming — pipe through as-is */
+        const { readable, writable } = new TransformStream()
+        nvidiaRes.body.pipeTo(writable)
+        return new Response(readable, {
+          status: nvidiaRes.status,
+          statusText: nvidiaRes.statusText,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-store',
+            'Connection': 'keep-alive',
+          },
+        })
+      }
 
-      return new Response(nvidiaText, {
+      const text = await nvidiaRes.text()
+      return new Response(text, {
         status: nvidiaRes.status,
+        statusText: nvidiaRes.statusText,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
@@ -115,7 +127,6 @@ export default {
     }
   },
 
-  /* cron warmup — keeps Worker and NVIDIA endpoint alive */
   async scheduled(event, env) {
     await warmup(env)
   },
