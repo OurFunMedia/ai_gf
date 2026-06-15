@@ -636,6 +636,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
       const imageMsg = {
         id: uid(), role: 'assistant', type: 'image',
         imageUrl: dataUrl, content: `📸 生成了「${label}」的圖片`,
+        expandedPrompt,
       }
       const promptMsg = character.showPrompt ? {
         id: uid(), role: 'assistant', type: 'prompt',
@@ -688,6 +689,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
       const imageMsg = {
         id: uid(), role: 'assistant', type: 'image',
         imageUrl: dataUrl, content: `📸 大師級男友視覺作品 — ${label}`,
+        expandedPrompt,
       }
       const promptMsg = character.showPrompt ? {
         id: uid(), role: 'assistant', type: 'prompt',
@@ -762,6 +764,12 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
                     {msg.imageUrl === character.refImageUrl ? '✕ 取消修改' : '📌 修改這張圖'}
                   </button>
                   </div>
+                  {msg.expandedPrompt && (
+                    <details style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      <summary style={{ cursor: 'pointer', opacity: 0.7 }}>📝 擴寫來源</summary>
+                      <p style={{ margin: '4px 0 0', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{msg.expandedPrompt}</p>
+                    </details>
+                  )}
                 </>
               ) : msg.type === 'prompt' ? (
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>{msg.content}</p>
