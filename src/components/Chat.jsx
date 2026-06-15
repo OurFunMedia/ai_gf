@@ -373,7 +373,7 @@ export default function Chat({ character, onChangeCharacter }) {
           ))
           setProMode(false)
           setLoading(false)
-          await generateImageFromPrompt(expandedPrompt)
+          await generateImageFromPrompt(expandedPrompt, '大師級作品', AGNES_CHAT_MODEL)
           return
         }
       }
@@ -548,6 +548,7 @@ You MUST include the character's full body description (age, height, figure, bus
 
 Output ONLY the expanded prompt. One paragraph. English. No explanations, no prefixes.`
       let apiResult = null
+      let source = ''
     try {
       /* try NVIDIA NIM via CORS proxy first */
       const nvidiaRes = await fetch(`${NVIDIA_PROXY_URL}`, {
@@ -567,6 +568,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
       if (nvidiaRes.ok) {
         const data = await nvidiaRes.json()
         apiResult = (data.choices?.[0]?.message?.content || '').trim()
+        source = NVIDIA_CHAT_MODEL
       }
     } catch {
       /* NVIDIA NIM failed — try Worker fallback below */
@@ -591,20 +593,22 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
           const data = await res.json()
           const msg = data.choices?.[0]?.message
           apiResult = (msg?.content || msg?.reasoning || '').trim()
+          source = 'nemotron-3-ultra-free'
         }
       } catch {
         /* Worker or network error — fallback to client-side construction below */
       }
     }
-    if (apiResult) return apiResult
+    if (apiResult) return { prompt: apiResult, source }
 
     /* fallback: build a prompt client-side using the random pool already selected */
+    source = 'client-side fallback'
     const bodyInfo = buildBodyDesc(character)
     const refPrefix = hasCharRef
       ? `KEEP: face, hairstyle, body${outfit?.desc ? '' : ', clothing'} unchanged. CHANGE: background/scene completely to the new setting. `
       : ''
     const wearList = accessories.filter(a => a.desc).map(a => `${a.label}=${a.desc}`).join(', ')
-    return `${refPrefix}${character.name} is ${userPrompt}. ${sceneType}. ${timeOfDay}, ${season}, ${weather}. ${weather === 'sunny' || weather === 'clear' || weather === 'golden haze' ? 'Natural lighting' : weather === 'night' || weather === 'midnight' || weather === 'deep night' ? 'Ambient artificial lighting' : 'Soft diffused lighting'}. ${style}. Color palette: ${colorPalette}. ${bodyInfo ? `Body: ${bodyInfo}. ` : ''}${wearList ? `Wearing accessories: ${wearList}. ` : ''}${styleExprs}. Camera: ${cameraAngle}. Realistic skin texture, natural imperfections, photorealistic, 8K. NO CGI, NO illustration, NO anime, NO AI plastic look. NO animal ears, NO fantasy head accessories.`
+    return { prompt: `${refPrefix}${character.name} is ${userPrompt}. ${sceneType}. ${timeOfDay}, ${season}, ${weather}. ${weather === 'sunny' || weather === 'clear' || weather === 'golden haze' ? 'Natural lighting' : weather === 'night' || weather === 'midnight' || weather === 'deep night' ? 'Ambient artificial lighting' : 'Soft diffused lighting'}. ${style}. Color palette: ${colorPalette}. ${bodyInfo ? `Body: ${bodyInfo}. ` : ''}${wearList ? `Wearing accessories: ${wearList}. ` : ''}${styleExprs}. Camera: ${cameraAngle}. Realistic skin texture, natural imperfections, photorealistic, 8K. NO CGI, NO illustration, NO anime, NO AI plastic look. NO animal ears, NO fantasy head accessories.`, source }
   }
 
   const generateImage = async (overridePrompt) => {
@@ -620,7 +624,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
 
       /* step 1: AI expand with randomness */
       setGenStatus('✏️'); setGenProgress(PROGRESS_EXPANDING)
-      const expandedPrompt = await expandPrompt(promptText, signal, hasCharRef)
+      const { prompt: expandedPrompt, source: expandedSource } = await expandPrompt(promptText, signal, hasCharRef)
       if (signal.aborted) return
       setGenProgress(PROGRESS_EXPANDED)
 
@@ -637,6 +641,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
         id: uid(), role: 'assistant', type: 'image',
         imageUrl: dataUrl, content: `📸 生成了「${label}」的圖片`,
         expandedPrompt,
+        expandedSource,
       }
       const promptMsg = character.showPrompt ? {
         id: uid(), role: 'assistant', type: 'prompt',
@@ -662,7 +667,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
   }
 
   /* auto-generate image from AI-crafted prompt in pro mode */
-  const generateImageFromPrompt = async (expandedPrompt, label = '大師級作品') => {
+  const generateImageFromPrompt = async (expandedPrompt, label = '大師級作品', source) => {
     abortRef.current = new AbortController()
     const signal = abortRef.current.signal
     setGenLoading(true); setGenStatus('🎨'); setGenProgress(PROGRESS_PRO_INIT)
@@ -690,6 +695,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
         id: uid(), role: 'assistant', type: 'image',
         imageUrl: dataUrl, content: `📸 大師級男友視覺作品 — ${label}`,
         expandedPrompt,
+        expandedSource: source,
       }
       const promptMsg = character.showPrompt ? {
         id: uid(), role: 'assistant', type: 'prompt',
@@ -767,7 +773,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
                   {msg.expandedPrompt && (
                     <details style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       <summary style={{ cursor: 'pointer', opacity: 0.7 }}>📝 擴寫來源</summary>
-                      <p style={{ margin: '4px 0 0', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{msg.expandedPrompt}</p>
+                      <p style={{ margin: '4px 0 0', lineHeight: 1.5 }}>{msg.expandedSource || msg.expandedPrompt}</p>
                     </details>
                   )}
                 </>
