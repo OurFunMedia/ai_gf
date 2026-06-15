@@ -10,8 +10,6 @@ import {
   PROGRESS_PRO_INIT, PROGRESS_PRO_PROCESSING,
 } from '../constants.js'
 
-const AGNES_API_KEY = import.meta.env.VITE_AGNES_API_KEY
-const AGNES_BASE = import.meta.env.VITE_AGNES_BASE_URL
 const AGNES_CHAT_MODEL = import.meta.env.VITE_AGNES_CHAT_MODEL
 const AGNES_IMAGE_MODEL = import.meta.env.VITE_AGNES_IMAGE_MODEL
 
@@ -85,12 +83,22 @@ export default function Chat({ character, onChangeCharacter }) {
   const [dragOver, setDragOver] = useState(false)
   const [uploadAreaOpen, setUploadAreaOpen] = useState(false)
   const [hintOpen, setHintOpen] = useState(false)
+  const [failedImages, setFailedImages] = useState([])
 
   const abortRef = useRef(null)
+  const placeholderIdRef = useRef(null)
   const persistTimer = useRef(null)
   const dirtyRef = useRef(false)
   const cancelGen = () => {
     abortRef.current?.abort()
+    /* remove empty assistant placeholder if still present */
+    if (placeholderIdRef.current) {
+      setMessages(prev => {
+        const msg = prev.find(m => m.id === placeholderIdRef.current)
+        if (msg && !msg.content) return prev.filter(m => m.id !== placeholderIdRef.current)
+        return prev
+      })
+    }
     setGenLoading(false); setGenStatus(''); setGenProgress(0); setError('')
   }
 
@@ -149,6 +157,11 @@ export default function Chat({ character, onChangeCharacter }) {
     const currentLen = accessories.length
     const canAdd = Math.max(0, MAX_ACCESSORIES - currentLen)
     if (canAdd <= 0) return
+    /* compute next label based on current max label number, not just length */
+    const maxLabelNum = accessories.reduce((max, a) => {
+      const m = a.label.match(/^pic(\d+)$/)
+      return m ? Math.max(max, parseInt(m[1], 10)) : max
+    }, 0)
     filesArr.slice(0, canAdd).forEach((file, i) => {
       const reader = new FileReader()
       reader.onload = (ev) => {
@@ -156,7 +169,7 @@ export default function Chat({ character, onChangeCharacter }) {
           id: uid(),
           dataUrl: ev.target.result,
           name: file.name,
-          label: `pic${prev.length + 1}`,
+          label: `pic${maxLabelNum + i + 1}`,
           desc: '',
         }])
       }
@@ -185,7 +198,11 @@ export default function Chat({ character, onChangeCharacter }) {
   }
 
   const removeAccessory = (id) => {
-    setAccessories(prev => prev.filter(a => a.id !== id))
+    setAccessories(prev => {
+      const remaining = prev.filter(a => a.id !== id)
+      /* re-number all remaining accessories sequentially (pic1, pic2, pic3) */
+      return remaining.map((a, idx) => ({ ...a, label: `pic${idx + 1}` }))
+    })
   }
 
   const handleOutfitUpload = (e) => {
@@ -273,6 +290,7 @@ export default function Chat({ character, onChangeCharacter }) {
     setMessages(newMessages)
     setLoading(true)
     const placeholderId = uid()
+    placeholderIdRef.current = placeholderId
     setMessages(prev => [...prev, { id: placeholderId, role: 'assistant', content: '' }])
     abortRef.current = new AbortController()
     try {
@@ -378,8 +396,25 @@ export default function Chat({ character, onChangeCharacter }) {
         }
       }
 
-    } catch (err) { if (err.name !== 'AbortError') setError(err.message) }
-    finally { setLoading(false); abortRef.current = null }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        /* remove empty placeholder on abort */
+        setMessages(prev => {
+          const msg = prev.find(m => m.id === placeholderIdRef.current)
+          if (msg && !msg.content) return prev.filter(m => m.id !== placeholderIdRef.current)
+          return prev
+        })
+      } else {
+        setError(err.message)
+        /* remove placeholder if it has no content on non-abort error */
+        setMessages(prev => {
+          const msg = prev.find(m => m.id === placeholderIdRef.current)
+          if (msg && !msg.content) return prev.filter(m => m.id !== placeholderIdRef.current)
+          return prev
+        })
+      }
+    }
+    finally { setLoading(false); abortRef.current = null; placeholderIdRef.current = null }
   }
 
   const handleKeyDown = (e) => {
@@ -401,9 +436,9 @@ export default function Chat({ character, onChangeCharacter }) {
       /* text-to-image only: top-level return_base64 */
       payload.return_base64 = true
     }
-    const res = await fetch(`${AGNES_BASE}/images/generations`, {
+    const res = await fetch(`${NVIDIA_PROXY_URL}/agnes/v1/images/generations`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${AGNES_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
       signal,
     })
@@ -654,7 +689,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
       await put('images', record)
       await pruneOldImages()
 
-      setImgMode(false); setCustomPrompt(''); setAccessories([])
+      setImgMode(false); setCustomPrompt(''); setAccessories([]); setOutfit(null)
       /* reset only data-URL reference (set via 修改這張圖), preserve external URLs */
       if (character.refImageUrl?.startsWith('data:')) {
         onChangeCharacter?.({...character, refImageUrl: ''})
@@ -708,7 +743,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
       await put('images', record)
       await pruneOldImages()
 
-      setImgMode(false); setProMode(false); setAccessories([])
+      setImgMode(false); setProMode(false); setAccessories([]); setOutfit(null)
       /* reset only data-URL reference (set via 修改這張圖), preserve external URLs */
       if (character.refImageUrl?.startsWith('data:')) {
         onChangeCharacter?.({...character, refImageUrl: ''})
@@ -744,8 +779,12 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
               {msg.type === 'image' ? (
                 <>
                   <p style={{ marginBottom: 8 }}>{msg.content}</p>
-                  <img src={msg.imageUrl} alt="" referrerPolicy="no-referrer" onClick={() => setViewerUrl(msg.imageUrl)} style={{ width: '100%', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
-                    onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML += '<p style=\"color:var(--text-muted);font-size:0.8rem;padding:8px\">⚠️ 圖片載入失敗，請嘗試下載</p>' }} />
+                  {failedImages.includes(msg.imageUrl) ? (
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', padding: 8 }}>⚠️ 圖片載入失敗，請嘗試下載</p>
+                  ) : (
+                    <img src={msg.imageUrl} alt="" referrerPolicy="no-referrer" onClick={() => setViewerUrl(msg.imageUrl)} style={{ width: '100%', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                      onError={() => setFailedImages(prev => [...prev, msg.imageUrl])} />
+                  )}
                   <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button onClick={() => downloadImage(msg.imageUrl)}
                     style={{
@@ -1073,8 +1112,12 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
         <div className="album-viewer-overlay" onClick={() => setViewerUrl(null)}>
           <div className="album-viewer-content" onClick={e => e.stopPropagation()}>
             <button className="album-viewer-close" onClick={() => setViewerUrl(null)}>✕</button>
-            <img src={viewerUrl} alt="" referrerPolicy="no-referrer"
-              onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML += '<p style=\"color:var(--text-muted);padding:20px\">⚠️ 圖片載入失敗</p>' }} />
+            {failedImages.includes(viewerUrl) ? (
+              <p style={{ color: 'var(--text-muted)', padding: 20 }}>⚠️ 圖片載入失敗</p>
+            ) : (
+              <img src={viewerUrl} alt="" referrerPolicy="no-referrer"
+                onError={() => setFailedImages(prev => [...prev, viewerUrl])} />
+            )}
           </div>
         </div>
       )}

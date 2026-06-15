@@ -31,7 +31,6 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
           VITE_AGNES_BASE_URL: https://apihub.agnes-ai.com/v1
           VITE_AGNES_CHAT_MODEL: agnes-2.0-flash
           VITE_AGNES_IMAGE_MODEL: agnes-image-2.1-flash

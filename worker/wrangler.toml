@@ -5,3 +5,8 @@ compatibility_flags = ["nodejs_compat"]
 
 [env.production.triggers]
 crons = ["*/5 * * * *"]
+
+# ===== Required Secrets (set via `wrangler secret put`) =====
+# NVIDIA_API_KEY   — NVIDIA NIM API key for chat completions
+# AGNES_API_KEY    — Agnes AI API key for image generations
+# ALLOWED_ORIGIN   — CORS allowed origin (e.g. https://ourfunmedia.github.io)

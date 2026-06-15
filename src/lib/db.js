@@ -20,7 +20,7 @@ function openDb(retries = DB_OPEN_RETRIES) {
           /* stale database: stores missing at current version → bump version to force upgrade */
           db.close()
           version = e.target.result.version + 1
-          tryOpen()
+          tryOpen(retries - 1)
           return
         }
         resolve(db)

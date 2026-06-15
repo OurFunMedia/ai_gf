@@ -1,41 +1,60 @@
 /**
- * ai-gf NVIDIA NIM CORS Proxy — Cloudflare Worker
+ * ai-gf CORS Proxy — Cloudflare Worker
  *
- * 透明代理：前端 → Worker（CORS proxy）→ NVIDIA NIM API
- * 支援 streaming SSE 與非 streaming 請求。
+ * 多路由代理：
+ *   預設路徑 → NVIDIA NIM API（chat completions）
+ *   /agnes/  → Agnes AI API（image generations）
  *
  * 環境變數（Cloudflare Secrets）：
- *   NVIDIA_API_KEY — NVIDIA NIM API key（沒設則從前端送 Authorization）
- *   ALLOWED_ORIGIN — 限制來源（留空 = 接受任何 origin）
+ *   NVIDIA_API_KEY — NVIDIA NIM API key（必要）
+ *   AGNES_API_KEY  — Agnes AI API key（/agnes/ 路由必要）
+ *   ALLOWED_ORIGIN — 限制來源（例如 https://ourfunmedia.github.io）
  */
 
 const NVIDIA_BASE = 'https://integrate.api.nvidia.com/v1'
+const AGNES_BASE = 'https://apihub.agnes-ai.com/v1'
 const FETCH_TIMEOUT_MS = 120_000
 
 /* shared warmup: keeps the Worker isolate alive */
 async function warmup(env) {
-  const key = env.NVIDIA_API_KEY || ''
-  if (!key) return
-  try {
-    await fetch(`${NVIDIA_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'minimaxai/minimax-m2.7',
-        messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 1, temperature: 0,
-      }),
-      signal: AbortSignal.timeout(20000),
-    })
-  } catch { /* non-critical */ }
+  const nvidiaKey = env.NVIDIA_API_KEY || ''
+  if (nvidiaKey) {
+    try {
+      await fetch(`${NVIDIA_BASE}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${nvidiaKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'minimaxai/minimax-m2.7',
+          messages: [{ role: 'user', content: 'ping' }],
+          max_tokens: 1, temperature: 0,
+        }),
+        signal: AbortSignal.timeout(20000),
+      })
+    } catch { /* non-critical */ }
+  }
+  const agnesKey = env.AGNES_API_KEY || ''
+  if (agnesKey) {
+    try {
+      await fetch(`${AGNES_BASE}/images/generations`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${agnesKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'agnes-image-2.0-flash', prompt: 'ping' }),
+        signal: AbortSignal.timeout(20000),
+      })
+    } catch { /* non-critical */ }
+  }
 }
 
 export default {
   async fetch(req, env) {
+    const NVIDIA_API_KEY = env.NVIDIA_API_KEY || globalThis.NVIDIA_API_KEY || ''
+    const AGNES_API_KEY = env.AGNES_API_KEY || globalThis.AGNES_API_KEY || ''
+    const ALLOWED_ORIGIN = env.ALLOWED_ORIGIN || globalThis.ALLOWED_ORIGIN || ''
     const origin = req.headers.get('Origin') || ''
-    /* 回傳請求的 origin（不限制）— API key 已在前端 JS bundle 中 */
+    const allowedOrigin = ALLOWED_ORIGIN || origin
+    const corsOrigin = (!origin || origin === 'null' || origin === allowedOrigin) ? (origin || '*') : 'null'
     const corsHeaders = {
-      'Access-Control-Allow-Origin': origin || '*',
+      'Access-Control-Allow-Origin': corsOrigin,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Max-Age': '86400',
@@ -47,6 +66,66 @@ export default {
     if (req.method !== 'POST')
       return new Response(JSON.stringify({ error: 'Method not allowed' }), {
         status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+
+    /* ── route: Agnes AI API (image generations) ── */
+    const url = new URL(req.url)
+    if (url.pathname.startsWith('/agnes/')) {
+      if (!AGNES_API_KEY)
+        return new Response(JSON.stringify({ error: 'AGNES_API_KEY not configured' }), {
+          status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+
+      let body
+      try { body = await req.json() }
+      catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      /* rewrite the path: /agnes/v1/... → /v1/... */
+      const agnesPath = url.pathname.replace(/^\/agnes/, '')
+      const agnesUrl = `${AGNES_BASE}${agnesPath}${url.search}`
+
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+
+      try {
+        const agnesRes = await fetch(agnesUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AGNES_API_KEY}` },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        })
+        clearTimeout(timeout)
+
+        const text = await agnesRes.text()
+        return new Response(text, {
+          status: agnesRes.status,
+          statusText: agnesRes.statusText,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store',
+          },
+        })
+      } catch (err) {
+        clearTimeout(timeout)
+        return new Response(JSON.stringify({
+          error: err.message, name: err.name,
+          stage: err.name === 'AbortError' ? 'timeout' : 'fetch',
+        }), {
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    /* ── route: NVIDIA NIM API (chat completions) ── */
+    if (!NVIDIA_API_KEY)
+      return new Response(JSON.stringify({ error: 'NVIDIA_API_KEY not configured' }), {
+        status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
 
     let body
@@ -63,12 +142,6 @@ export default {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
 
-    /* 優先使用 worker env 的 API key，沒設才 fallback 到前端送來的 */
-    const serverKey = env.NVIDIA_API_KEY || globalThis.NVIDIA_API_KEY || ''
-    const authHeader = serverKey
-      ? `Bearer ${serverKey}`
-      : (req.headers.get('Authorization') || '')
-
     const nvidiaPayload = {
       model,
       messages,
@@ -83,7 +156,7 @@ export default {
     try {
       const nvidiaRes = await fetch(`${NVIDIA_BASE}/chat/completions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(authHeader ? { 'Authorization': authHeader } : {}) },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${NVIDIA_API_KEY}` },
         body: JSON.stringify(nvidiaPayload),
         signal: controller.signal,
       })

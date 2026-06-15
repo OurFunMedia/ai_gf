@@ -27,6 +27,22 @@ export default function CharacterSettings({ character, onChange, onClearChat }) 
   const [style, setStyle] = useState(character.style ?? '可愛')
   const [showPrompt, setShowPrompt] = useState(character.showPrompt ?? true)
 
+  // ---- Props → Local state sync（當 Chat.jsx 等上層變更 character prop 時同步）----
+  useEffect(() => {
+    if (character.name !== localName) setLocalName(character.name)
+    if (character.personality !== localPersonality) setLocalPersonality(character.personality)
+    if (character.refImageUrl !== localRefUrl) setLocalRefUrl(character.refImageUrl)
+    if ((character.age ?? 22) !== age) setAge(character.age ?? 22)
+    if ((character.height ?? '中等') !== height) setHeight(character.height ?? '中等')
+    if ((character.figure ?? '勻稱') !== figure) setFigure(character.figure ?? '勻稱')
+    if ((character.bust ?? '中等') !== bust) setBust(character.bust ?? '中等')
+    if ((character.waist ?? '細') !== waist) setWaist(character.waist ?? '細')
+    if ((character.hipWidth ?? '中') !== hipWidth) setHipWidth(character.hipWidth ?? '中')
+    if ((character.hipShape ?? '翹') !== hipShape) setHipShape(character.hipShape ?? '翹')
+    if ((character.style ?? '可愛') !== style) setStyle(character.style ?? '可愛')
+    if ((character.showPrompt ?? true) !== showPrompt) setShowPrompt(character.showPrompt ?? true)
+  }, [character])
+
   // Toast
   const [toastVisible, setToastVisible] = useState(false)
   const [saving, setSaving] = useState(false)

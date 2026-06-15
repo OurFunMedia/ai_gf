@@ -6,6 +6,11 @@ export default function ImageGen({ character }) {
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState(true)
   const [viewUrl, setViewUrl] = useState(null)
+  const [failedImages, setFailedImages] = useState(new Set())
+
+  const handleImageError = (imageUrl) => {
+    setFailedImages(prev => new Set(prev).add(imageUrl))
+  }
 
   /* load photos on mount */
   const loadPhotos = () => {
@@ -77,8 +82,12 @@ export default function ImageGen({ character }) {
           {photos.map(photo => (
             <div key={photo.id} className="album-card">
               <div className="album-img-wrap" onClick={() => setViewUrl(photo.imageUrl)}>
-                <img src={photo.imageUrl} alt="" referrerPolicy="no-referrer"
-                  onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<p style=\"color:var(--text-muted);font-size:0.75rem;padding:12px;text-align:center\">⚠️ 載入失敗</p>' }} />
+                {failedImages.has(photo.imageUrl) ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', padding: 12, textAlign: 'center' }}>⚠️ 載入失敗</p>
+                ) : (
+                  <img src={photo.imageUrl} alt="" referrerPolicy="no-referrer"
+                    onError={() => handleImageError(photo.imageUrl)} />
+                )}
               </div>
               <div className="album-info">
                 <span className="album-date">{formatDate(photo.timestamp)}</span>
@@ -111,7 +120,10 @@ export default function ImageGen({ character }) {
               <button className="album-viewer-close" onClick={() => setViewUrl(null)}>✕</button>
             </div>
             <img src={viewUrl} alt="" referrerPolicy="no-referrer"
-              onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML += '<p style=\"color:var(--text-muted);padding:20px;text-align:center\">⚠️ 圖片載入失敗</p>' }} />
+              onError={() => handleImageError(viewUrl)} style={{ display: failedImages.has(viewUrl) ? 'none' : undefined }} />
+            {failedImages.has(viewUrl) && (
+              <p style={{ color: 'var(--text-muted)', padding: 20, textAlign: 'center' }}>⚠️ 圖片載入失敗</p>
+            )}
           </div>
         </div>
       )}
