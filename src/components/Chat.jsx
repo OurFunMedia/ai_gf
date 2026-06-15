@@ -15,6 +15,11 @@ const AGNES_BASE = import.meta.env.VITE_AGNES_BASE_URL
 const AGNES_CHAT_MODEL = import.meta.env.VITE_AGNES_CHAT_MODEL
 const AGNES_IMAGE_MODEL = import.meta.env.VITE_AGNES_IMAGE_MODEL
 
+/* NVIDIA NIM 聊天（minimax-m2.7）取代 Agnes 做 chat completions */
+const NVIDIA_API_KEY = import.meta.env.VITE_NVIDIA_API_KEY
+const NVIDIA_BASE = 'https://integrate.api.nvidia.com/v1'
+const NVIDIA_CHAT_MODEL = 'minimaxai/minimax-m2.7'
+
 const NVIDIA_WORKER_URL = import.meta.env.VITE_NVIDIA_WORKER_URL || 'https://ai-gf-zen-proxy-production.tobyyip-work.workers.dev'
 
 const WELCOME = (name) => `嗨～我是${name}！今天過得怎麼樣呀？😊`
@@ -271,7 +276,7 @@ export default function Chat({ character, onChangeCharacter }) {
     try {
       const systemContent = getSystemContent()
       const payload = {
-        model: AGNES_CHAT_MODEL,
+        model: NVIDIA_CHAT_MODEL,
         messages: [
           ...(systemContent ? [{ role: 'system', content: systemContent }] : []),
           ...newMessages.map(m => ({ role: m.role, content: m.content })),
@@ -279,9 +284,9 @@ export default function Chat({ character, onChangeCharacter }) {
         temperature: CHAT_TEMPERATURE, max_tokens: CHAT_MAX_TOKENS,
         stream: true,
       }
-      const res = await fetch(`${AGNES_BASE}/chat/completions`, {
+      const res = await fetch(`${NVIDIA_BASE}/chat/completions`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${AGNES_API_KEY}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${NVIDIA_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
         signal: abortRef.current.signal,
       })
@@ -540,17 +545,17 @@ ${wearItems}` : ''}
 You MUST include the character's full body description (age, height, figure, bust, waist, hips) in the final prompt so the image model generates the correct body type.
 
 Output ONLY the expanded prompt. One paragraph. English. No explanations, no prefixes.`
-    let apiResult = null
+      let apiResult = null
     try {
-      /* try Agnes Chat API first (CORS-safe, same origin policy allows) */
-      const agnesRes = await fetch(`${AGNES_BASE}/chat/completions`, {
+      /* try NVIDIA NIM chat first (CORS-safe) */
+      const nvidiaRes = await fetch(`${NVIDIA_BASE}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${AGNES_API_KEY}`,
+          'Authorization': `Bearer ${NVIDIA_API_KEY}`,
         },
         body: JSON.stringify({
-          model: AGNES_CHAT_MODEL,
+          model: NVIDIA_CHAT_MODEL,
           messages: [
             { role: 'system', content: sysMsg },
             { role: 'user', content: userPrompt },
@@ -560,12 +565,12 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
         }),
         signal,
       })
-      if (agnesRes.ok) {
-        const data = await agnesRes.json()
+      if (nvidiaRes.ok) {
+        const data = await nvidiaRes.json()
         apiResult = (data.choices?.[0]?.message?.content || '').trim()
       }
     } catch {
-      /* Agnes API failed — try Worker fallback below */
+      /* NVIDIA NIM failed — try Worker fallback below */
     }
     if (!apiResult) {
       try {
