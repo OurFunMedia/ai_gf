@@ -77,7 +77,8 @@ export default function ImageGen({ character }) {
           {photos.map(photo => (
             <div key={photo.id} className="album-card">
               <div className="album-img-wrap" onClick={() => setViewUrl(photo.imageUrl)}>
-                <img src={photo.imageUrl} alt="" />
+                <img src={photo.imageUrl} alt="" referrerPolicy="no-referrer"
+                  onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<p style=\"color:var(--text-muted);font-size:0.75rem;padding:12px;text-align:center\">⚠️ 載入失敗</p>' }} />
               </div>
               <div className="album-info">
                 <span className="album-date">{formatDate(photo.timestamp)}</span>
@@ -109,7 +110,8 @@ export default function ImageGen({ character }) {
               </button>
               <button className="album-viewer-close" onClick={() => setViewUrl(null)}>✕</button>
             </div>
-            <img src={viewUrl} alt="" />
+            <img src={viewUrl} alt="" referrerPolicy="no-referrer"
+              onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML += '<p style=\"color:var(--text-muted);padding:20px;text-align:center\">⚠️ 圖片載入失敗</p>' }} />
           </div>
         </div>
       )}

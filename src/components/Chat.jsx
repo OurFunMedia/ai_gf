@@ -724,7 +724,8 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
               {msg.type === 'image' ? (
                 <>
                   <p style={{ marginBottom: 8 }}>{msg.content}</p>
-                  <img src={msg.imageUrl} alt="" onClick={() => setViewerUrl(msg.imageUrl)} style={{ width: '100%', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }} />
+                  <img src={msg.imageUrl} alt="" referrerPolicy="no-referrer" onClick={() => setViewerUrl(msg.imageUrl)} style={{ width: '100%', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                    onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML += '<p style=\"color:var(--text-muted);font-size:0.8rem;padding:8px\">⚠️ 圖片載入失敗，請嘗試下載</p>' }} />
                   <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button onClick={() => downloadImage(msg.imageUrl)}
                     style={{
@@ -1046,7 +1047,8 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
         <div className="album-viewer-overlay" onClick={() => setViewerUrl(null)}>
           <div className="album-viewer-content" onClick={e => e.stopPropagation()}>
             <button className="album-viewer-close" onClick={() => setViewerUrl(null)}>✕</button>
-            <img src={viewerUrl} alt="" />
+            <img src={viewerUrl} alt="" referrerPolicy="no-referrer"
+              onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML += '<p style=\"color:var(--text-muted);padding:20px\">⚠️ 圖片載入失敗</p>' }} />
           </div>
         </div>
       )}
