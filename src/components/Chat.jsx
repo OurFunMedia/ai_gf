@@ -415,9 +415,9 @@ export default function Chat({ character, onChangeCharacter }) {
     setMessages(prev => prev.filter(m => m.type !== 'image' || !staleUrls.has(m.imageUrl)))
   }
 
-  /* AI expand prompt with randomness — English output for better Agnes image quality */
-  const expandPrompt = async (userPrompt, signal, hasRef = false) => {
-    /* client-side scene type pick — guarantees diversity when input is vague */
+  /* AI expand prompt — English output for better Agnes image quality */
+  const expandPrompt = async (userPrompt, signal, hasCharRef = false) => {
+    /* keep random pools for client-side fallback only */
     const sceneTypes = [
       'cozy indoor living space — bedroom, living room, kitchen, balcony, sunroom',
       'indoor public space — library, coffee shop, museum, bookstore, aquarium, arcade, karaoke room',
@@ -431,17 +431,12 @@ export default function Chat({ character, onChangeCharacter }) {
       'atmospheric night scene — neon-lit street, observatory dome, rooftop bar, bridge overlook, highway overpass',
     ]
     const sceneType = sceneTypes[Math.floor(Math.random() * sceneTypes.length)]
-
-    /* random season & time of day — not tied to real time */
     const seasons = ['early spring','spring','late spring','early summer','summer','midsummer','late summer','early autumn','autumn','late autumn','early winter','winter']
     const season = seasons[Math.floor(Math.random() * seasons.length)]
     const timesOfDay = ['dawn','sunrise','early morning','morning','late morning','noon','early afternoon','afternoon','golden hour','sunset','twilight','night','midnight','deep night']
     const timeOfDay = timesOfDay[Math.floor(Math.random() * timesOfDay.length)]
-
-    /* large random pools for variety */
     const weathers = ['sunny','clear','partly cloudy','overcast','golden haze','misty','foggy','crisp autumn','warm breeze','soft overcast','dramatic clouds','hazy','bright','fair','dry heat','urban haze','starry clear','moonlit']
     const weather = weathers[Math.floor(Math.random() * weathers.length)]
-
     const styles = [
       'cinematic realism, natural everyday aesthetic',
       'candid photography, warm intimate atmosphere',
@@ -455,7 +450,6 @@ export default function Chat({ character, onChangeCharacter }) {
       'warm analog film, slight grain',
     ]
     const style = styles[Math.floor(Math.random() * styles.length)]
-
     const colorPalettes = [
       'warm earthy tones, soft browns and creams',
       'cool pastels, mint and lavender hues',
@@ -467,7 +461,6 @@ export default function Chat({ character, onChangeCharacter }) {
       'cream, beige and dusty rose',
     ]
     const colorPalette = colorPalettes[Math.floor(Math.random() * colorPalettes.length)]
-
     const cameraAngles = [
       'shot from slightly below, intimate eye-level perspective',
       'boyfriend POV, natural eye-level framing',
@@ -480,71 +473,63 @@ export default function Chat({ character, onChangeCharacter }) {
     ]
     const cameraAngle = cameraAngles[Math.floor(Math.random() * cameraAngles.length)]
 
-    /* style config — each style influences clothing suggestions, expressions, and color bias */
-    const styleConfig = {
-      '清純': { clothing: '白色碎花洋裝、棉質襯衫配牛仔褲、淺色針織衫、A字裙、帆布鞋', expressions: 'natural shy smile, innocent gaze, gentle blush, pure expression, soft peaceful face' },
-      '性感': { clothing: '貼身洋裝、細肩帶背心配短裙、蕾絲上衣、高衩長裙、皮裙、高跟鞋', expressions: 'seductive gaze over shoulder, confident smirk, sultry expression, mysterious look, alluring eyes' },
-      '可愛': { clothing: '蓬裙、百褶裙、oversize針織衫配短褲、連身吊帶裙、泡泡袖上衣、娃娃鞋', expressions: 'bright cheerful smile, playful wink, cute pout, happy laugh, bunny pose' },
-      '優雅': { clothing: '絲質連身裙、簡約套裝、高腰寬褲配雪紡衫、及膝裙、低跟鞋', expressions: 'graceful smile, composed serene expression, elegant gaze, poised calm face, refined look' },
-      '鄰家': { clothing: 'T恤配牛仔短褲、連帽外套、居家棉質洋裝、吊帶褲、運動鞋', expressions: 'warm friendly smile, relaxed natural expression, casual laugh, caring look, comfortable happy face' },
-    }
-    const cfg = styleConfig[character.style] || styleConfig['可愛']
-    const styleClothHint = cfg.clothing
-    const styleExprs = cfg.expressions
+    /* style config — expressions per character style */
+    const styleExprs = ({
+      '清純': 'natural shy smile, innocent gaze, gentle blush, pure expression, soft peaceful face',
+      '性感': 'seductive gaze over shoulder, confident smirk, sultry expression, mysterious look, alluring eyes',
+      '可愛': 'bright cheerful smile, playful wink, cute pout, happy laugh, bunny pose',
+      '優雅': 'graceful smile, composed serene expression, elegant gaze, poised calm face, refined look',
+      '鄰家': 'warm friendly smile, relaxed natural expression, casual laugh, caring look, comfortable happy face',
+    })[character.style] || 'bright cheerful smile, playful wink, cute pout, happy laugh'
 
-    /* build body context from character settings */
+    /* --- reference image sections --- */
+
+    const hasOutfitRef = !!outfit?.desc
     const bodyDescText = buildBodyDesc(character)
-    const refNote = hasRef
-      ? `\n角色外貌參照：臉部、髮型、體型${outfit?.desc ? '' : '、服裝'}保持與參考圖完全一致。`
+
+    /* character reference: face & body only, clothing is separate */
+    const charRefNote = hasCharRef
+      ? `\n角色外貌參照參考圖：臉部、髮型、體型保持與參考圖完全一致。服裝不受此限制，由下方服裝規則決定。`
       : ''
 
-    /* if user uploaded accessories, force AI to keep them in the scene */
+    const charContext = bodyDescText || charRefNote
+      ? `\n角色資訊：${bodyDescText}${charRefNote}`
+      : ''
+
+    /* accessories */
     const wearItems = accessories.length > 0
-      ? `（使用者指定的穿戴物品：${accessories.filter(a => a.desc).map(a => `${a.label} = ${a.desc}`).join('；')}）務必保持這些物品在角色身上，不要移除或改變外觀。`
-      : ''
-    let clothingRule
-    if (outfit?.desc) {
-      clothingRule = `1. 🧥 服裝：角色必須穿著此套服裝：${outfit.desc}。保持服裝外觀不變，但場景、時間、地點、姿勢可以自由創作。`
-    } else if (hasRef || accessories.length > 0) {
-      clothingRule = `1. 🧥 服裝：保持服裝不變，${wearItems}除非使用者明確要求換衣服。`
-    } else {
-      clothingRule = `1. 🧥 服裝：根據角色風格選擇合適的服裝。優先選擇：${styleClothHint}。可根據場景場合調整，但須符合整體風格調性。`
-    }
-
-    const charContext = bodyDescText || refNote
-      ? `\n角色資訊：${bodyDescText}${refNote}`
+      ? accessories.filter(a => a.desc).map(a => `  - ${a.label}：${a.desc}`).join('\n')
       : ''
 
-    const sysMsg = `You are a photographer. Expand a short Chinese scene description into an English photo prompt for a realistic image generator.
+    /* clothing rule — independent from character ref */
+    const outfitRule = hasOutfitRef
+      ? `1. 👗 服裝：角色必須穿著此套服裝：${outfit.desc}。保持服裝外觀不變，但場景、時間、地點、姿勢可以自由創作。`
+      : `1. 👗 服裝：根據場景與使用者描述選擇合適的服裝。如果使用者提到任何衣物（如襯衫、裙子、洋裝），詳細描述其顏色、材質、剪裁、樣式，並搭配出完整造型。`
+
+    const sysMsg = `You are a creative photographer. Expand a short Chinese scene description into a detailed English photo prompt for a realistic image generator.
 
 The subject is "${character.name}".${charContext}
 
-**CORE RULES (strictly enforced):**
-1. User's input is the foundation — ALWAYS base the scene entirely on what they wrote. Never override it.
-2. Add reasonable story details around their input (what the character is doing, why they're there, the atmosphere).
+**RULES:**
+1. Use the user's input as a creative seed — interpret, enrich, and build a complete realistic scene around it. Never output the user's text literally without expansion. If they mention a clothing item or object, construct an entire scene around it with context-appropriate details.
+2. Infer all scene elements (location, time of day, weather/lighting, atmosphere) naturally from the user's description. Do NOT use random defaults — make reasonable real-world choices that fit the described context.
 3. MUST look like a REAL photograph — absolutely NO: CG, 3D render, illustration, anime, cartoon, painting, fantasy, sci-fi, digital art, stylized, or any non-photorealistic style.
 4. STRICTLY FORBID: AI plastic look (AI膠圖) — no overly smooth skin, no porcelain face, no wax-like texture, no artificial perfection, no generic AI face. Must have natural skin imperfections, real human features, natural asymmetry, authentic texture.
 5. STRICTLY FORBID any animal ears or animal head accessories (rabbit ears, cat ears, fox ears, etc.) — human ears only, no fantasy headwear.
+6. If the user's input is very vague (only "random", "隨機", or ≤3 characters with no clear scene), create a completely random scene — pick any location, time, weather, and style, ensuring each generation is diverse.
 
-If the user's input is vague (e.g. "random", "隨機", or ≤3 words), create a scene matching: ${sceneType}.
+Required elements:
+${outfitRule}
+2. 🧍 Pose: Choose a natural pose fitting the scene. Examples: looking back with a smile, playing with hair,低头 scrolling phone, holding a drink, leaning against a wall, adjusting collar, tying shoelaces, stretching, looking out a window, walking naturally, sitting on a bench, browsing bookshelf, holding a coffee cup, laughing naturally.
+3. 😊 Expression/Mood: ${character.style} style — ${styleExprs}
+4. 📷 Camera: ${cameraAngle}, natural depth of field
+5. ✨ Quality: realistic skin texture, natural pores, fine wrinkles, subtle blemishes, natural skin oil sheen, real hair strands, realistic eye catchlight, natural shadows, photorealistic, 8K
+6. 🚫 ANTI-CG & ANTI-AI: no CGI, no 3D render, no illustration, no anime, no cartoon, no painting, no stylized art, NO AI plastic look, no wax skin, no porcelain face, no smooth fake perfection, no over-polished digital art look${wearItems ? `
 
-Elements to include (use user's input if provided, otherwise use the suggestion):
-
-${clothingRule}
-2. 🧍 Pose: Choose a natural pose fitting the scene. Examples: looking back with a smile, playing with hair,低頭 scrolling phone, holding a drink, leaning against a wall, adjusting collar, tying shoelaces, stretching, looking out a window, walking naturally, sitting on a bench, browsing bookshelf, holding a coffee cup, laughing naturally.
-3. ☁️ Weather/Atmosphere: Use user's if provided, otherwise: ${weather}
-4. 🌅 Time/Lighting: Use user's if provided, otherwise: ${timeOfDay}, ${season}
-5. 🎨 Color Palette: ${colorPalette}
-6. 😊 Expression/Mood: ${character.style} style — ${styleExprs}
-7. 📷 Camera: ${cameraAngle}, natural depth of field
-8. ✨ Quality: realistic skin texture, natural pores, fine wrinkles, subtle blemishes, natural skin oil sheen, real hair strands, realistic eye catchlight, natural shadows, photorealistic, 8K
-9. 🚫 ANTI-CG & ANTI-AI: no CGI, no 3D render, no illustration, no painting, no anime, no cartoon, no stylized art, NO AI plastic look, no wax skin, no porcelain face, no smooth fake perfection, no over-polished digital art look
+📎 穿戴物品（必須出現在角色身上）：
+${wearItems}` : ''}
 
 You MUST include the character's full body description (age, height, figure, bust, waist, hips) in the final prompt so the image model generates the correct body type.
-
-Style: ${style}${hasRef ? `
-
-REFERENCE PHOTO MODE: A reference photo will be provided. Your prompt MUST begin with: "KEEP: [face, hairstyle, body, clothing unchanged]. CHANGE: [background/scene completely to the new setting]." Then describe the scene as usual.` : ''}
 
 Output ONLY the expanded prompt. One paragraph. English. No explanations, no prefixes.`
     let apiResult = null
@@ -603,7 +588,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
 
     /* fallback: build a prompt client-side using the random pool already selected */
     const bodyInfo = buildBodyDesc(character)
-    const refPrefix = hasRef
+    const refPrefix = hasCharRef
       ? `KEEP: face, hairstyle, body${outfit?.desc ? '' : ', clothing'} unchanged. CHANGE: background/scene completely to the new setting. `
       : ''
     const wearList = accessories.filter(a => a.desc).map(a => `${a.label}=${a.desc}`).join(', ')
@@ -619,11 +604,11 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
       setGenLoading(true); setGenStatus('✏️'); setGenProgress(PROGRESS_INIT); setError('')
 
     try {
-      const hasRef = !!character.refImageUrl
+      const hasCharRef = !!character.refImageUrl
 
       /* step 1: AI expand with randomness */
       setGenStatus('✏️'); setGenProgress(PROGRESS_EXPANDING)
-      const expandedPrompt = await expandPrompt(promptText, signal, hasRef || accessories.length > 0)
+      const expandedPrompt = await expandPrompt(promptText, signal, hasCharRef)
       if (signal.aborted) return
       setGenProgress(PROGRESS_EXPANDED)
 
