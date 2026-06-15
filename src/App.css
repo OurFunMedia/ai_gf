@@ -35,6 +35,20 @@
 .chat-input { flex: 1; padding: 12px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-input); color: var(--text); resize: none; outline: none; font-size: 0.925rem; }
 .chat-input:focus { border-color: var(--pink); }
 .chat-send { padding: 12px 24px; border-radius: var(--radius); background: var(--pink); color: white; font-weight: 600; font-size: 0.925rem; transition: background 0.2s; align-self: flex-end; }
+
+/* 刪除訊息按鈕 — 半透明黑底白字，hover 變紅 */
+.msg-del-btn {
+  position: absolute; top: -6px; right: -6px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(0,0,0,0.45); color: #fff; border: 1px solid rgba(255,255,255,0.1);
+  font-size: 0.75rem; cursor: pointer; opacity: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.2s, background 0.2s;
+  line-height: 1;
+}
+.message-bubble:hover .msg-del-btn,
+.msg-del-btn:focus-visible { opacity: 1; }
+.msg-del-btn:hover { background: rgba(255, 80, 80, 0.85); border-color: rgba(255, 80, 80, 0.3); }
 .chat-send:hover { background: var(--pink-dark); }
 .chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -204,6 +218,13 @@ input.body-age-input { width: 80px; padding: 8px 12px; font-size: 0.9rem; }
   .album-prompt { font-size: 0.8rem; }
   .ref-preview { width: 100px; height: 100px; }
   .chat-container .tab { flex: none; font-size: 0.9rem; padding: 6px 0; min-width: 44px; min-height: 44px; width: 44px; }
+
+  /* 手機版刪除按鈕 — 永遠可見 + 44px 觸控目標 */
+  .msg-del-btn {
+    width: 44px; height: 44px; top: -10px; right: -10px;
+    opacity: 0.7; font-size: 0.9rem;
+  }
+  .msg-del-btn:hover { opacity: 1; }
 }
 
 /* ===== Toast 提示（儲存成功短暫彈出） ===== */

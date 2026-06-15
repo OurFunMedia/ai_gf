@@ -719,13 +719,7 @@ Output ONLY the expanded prompt. One paragraph. English. No explanations, no pre
             </div>
             <div className="message-bubble" style={{ position: 'relative', ...(msg.type === 'image' ? { width: '50%' } : {}) }}>
               <button onClick={() => deleteMessage(msg.id)}
-                style={{
-                  position: 'absolute', top: -2, right: -2,
-                  background: 'none', border: 'none', color: 'var(--text-muted)',
-                  fontSize: '0.85rem', cursor: 'pointer', opacity: 0.35,
-                  width: 44, height: 44, display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', zIndex: 1,
-                }}
+                className="msg-del-btn"
                 title="刪除訊息">✕</button>
               {msg.type === 'image' ? (
                 <>
